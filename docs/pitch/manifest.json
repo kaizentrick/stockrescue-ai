@@ -1,0 +1,24 @@
+{
+  "received": "2026-10-10",
+  "source": "Pitch final entregado por el hilo padre; archivos originales sin modificación",
+  "files": [
+    {
+      "name": "Agente-de-equipamiento-pitch.pptx",
+      "bytes": 1540129,
+      "sha256": "67007f8724b2bf6cebc47043c9d4b4063a02abbc27d69a337bfbb6aa75e84dac",
+      "library_file_id": "libfile_e3bc1b6fd484819182664a295fd3b4ef"
+    },
+    {
+      "name": "Agente-de-equipamiento-pitch.pdf",
+      "bytes": 424788,
+      "sha256": "1eac5005493086d4c829b9859cae4b10d49fc1c4f3ff013f8292231ad5d582b5",
+      "library_file_id": "libfile_14d4aeada4d08191bedd3d29d2c17947"
+    },
+    {
+      "name": "Guion-pitch-4m20s.md",
+      "bytes": 7731,
+      "sha256": "6e0de033fa07265643363a275e99b1a5058b245881d3eaa3fcffcd10580ddd62",
+      "library_file_id": "libfile_43d7cf9133e88191b63cfa4b99124acf"
+    }
+  ]
+}
