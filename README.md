@@ -2,6 +2,8 @@
 
 MVP independiente para el hackathon Reap. Un responsable de TI reporta una pantalla sin conexión; el agente comprueba puertos y capacidades, propone reutilizar o conectar directamente y solo busca una compra cuando hace falta. **Un pedido confirmado no significa instalación ni incidencia resuelta.**
 
+[Pitch, PDF y guion de la demo](docs/pitch/README.md): originales verificados con SHA-256, simulación local explícita.
+
 **Estado: simulación local funcional.** Inventario, catálogo, compatibilidad, precios, proveedores y pedidos son fixtures sintéticos. No se ha completado una integración real con Reap. No hay llaves, tarjetas ni llamadas a servicios de IA.
 
 ## Inicio rápido
