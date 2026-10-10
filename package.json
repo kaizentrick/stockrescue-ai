@@ -15,7 +15,12 @@
     "test": "node --test tests/*.test.ts",
     "check": "npm run lint && npm run typecheck && npm test",
     "test:ui": "playwright test",
-    "sandbox": "node src/start-sandbox.ts"
+    "sandbox": "node src/start-sandbox.ts",
+    "agent:check": "node --env-file-if-exists=.env.agent src/agent/check.ts",
+    "agent:start": "node --env-file-if-exists=.env.agent src/agent/start.ts",
+    "agent:dev": "node --env-file-if-exists=.env.agent --watch src/agent/start.ts",
+    "agent:sandbox": "node --env-file-if-exists=.env.agent src/start-sandbox.ts --agent",
+    "agent:alerts": "node --env-file-if-exists=.env.agent src/agent/alerts.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

@@ -1,6 +1,6 @@
 # Validación de StockRescue
 
-Validación local del 9 de octubre de 2026, macOS, Node 26.8.2. Estas pruebas distinguen simulación local y respuestas reales del sandbox. No acreditan operación productiva.
+Validación del SaaS del 9 de octubre de 2026, macOS, Node 26.8.2. Estas pruebas distinguen simulación local y respuestas reales del sandbox. No acreditan operación productiva. La validación posterior del entorno de WhatsApp se documenta por separado abajo.
 
 ## Automatización reproducible
 
@@ -19,6 +19,14 @@ npm run test:ui
 - `git diff --check`: sin errores. Búsqueda de patrones de claves y enlaces alojados privados en archivos versionables: sin coincidencias.
 
 El servidor de UI existe solo en `tests/ui/server.ts`, puerto 4325 y SQLite en memoria. Restablece el estado antes de cada caso; jamás construye un proveedor sandbox. Resultados, trazas y capturas de fallo van a `.tmp/codex/`, fuera de Git. El endpoint de reset no existe en el servidor de producto.
+
+## Entorno Gemini y WhatsApp
+
+Validación local del 9 de octubre de 2026, Windows, Node 25.8.1, para [PR #3](https://github.com/kaizentrick/stockrescue-ai/pull/3): `npm run check` pasó ESLint, TypeScript estricto y **54 pruebas Node** (36 del SaaS y 18 del agente). También pasaron `npm run build`, `git diff --check` y `npm run agent:alerts` en modo preview, sin enviar mensajes.
+
+Las pruebas nuevas cubren configuración, firma del webhook, destinatarios autorizados, aislamiento del número de WhatsApp, mensajes duplicados, persistencia y recuperación, vencimientos, respuestas inciertas, cotización y confirmación explícita. Incluyen el recorrido webhook firmado → preview → confirmación → checkout del proveedor simulado, sin duplicarlo al repetir el evento, y el arranque del gateway con TypeScript nativo.
+
+Se usaron credenciales ficticias y clientes simulados: no se hicieron llamadas autenticadas a Google, Meta ni Reap, ni se enviaron mensajes reales. Las pruebas de navegador anteriores corresponden al SaaS; no se volvieron a ejecutar localmente para esta integración. La operación real requiere las credenciales, el callback HTTPS y la plantilla aprobada descritos en [AGENT-INTEGRATION.md](AGENT-INTEGRATION.md).
 
 ## Qué cubren las pruebas
 

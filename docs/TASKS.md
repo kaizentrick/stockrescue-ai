@@ -12,7 +12,7 @@
 | GitHub y documentación del nuevo alcance | Actualizados en rama StockRescue | Repositorio renombrado; históricos preservados; integración a main mediante PR |
 | Piloto con negocio y datos reales | Pendiente | Calidad de datos, uso recurrente y utilidad económica |
 | Usuarios, varias empresas, POS y producción | Fuera del MVP | Diseño y validación independientes |
-| Entorno Google AI Studio + WhatsApp Cloud API | En preparación en `codex/whatsapp-gemini-environment` | Gateway de WhatsApp, consultas de inventario, preview y confirmación; detalles en AGENT-INTEGRATION.md |
+| Entorno Google AI Studio + WhatsApp Cloud API | Implementado en PR #3 sobre el MVP | Configuración, gateway, consultas, preview, confirmación y alertas; contratos probados sin credenciales. Conexión real pendiente de configurar Meta/Gemini; ver AGENT-INTEGRATION.md |
 
 Acordar archivos y responsables antes del trabajo paralelo. Actualizar documentos existentes, sin informes duplicados. El estado de implementación no acredita resultados de pruebas ni una compra remota: consultar [QA](QA.md) e [integración Reap](REAP-INTEGRATION.md).
 

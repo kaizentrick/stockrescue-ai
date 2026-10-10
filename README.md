@@ -62,6 +62,7 @@ No se incorporó un ERP completo ni una biblioteca de agentes. La interfaz usa H
 
 ## Documentación actual
 
+- [Entorno del agente de WhatsApp y Google AI Studio](docs/AGENT-INTEGRATION.md): configuración, webhook, preview, confirmación y alertas. Proceso separado del SaaS; requiere credenciales de Gemini y Meta para tráfico real.
 - [Arquitectura y cálculo](docs/ARCHITECTURE.md)
 - [Integración Reap y sandbox](docs/REAP-INTEGRATION.md)
 - [Producto de la lista de comercios](docs/MERCHANTS.md)

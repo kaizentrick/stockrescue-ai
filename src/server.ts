@@ -1,10 +1,8 @@
 import { createServer, type IncomingMessage } from "node:http";
-import { readFileSync, mkdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { Store } from "./store.ts";
 import { Service } from "./service.ts";
-import { ReapSandboxAdapter } from "./reap.ts";
-import { SandboxProvider } from "./provider.ts";
+import { createRuntimeService } from "./runtime.ts";
 import { previewCsv, csvColumns } from "./import.ts";
 import { initialState } from "./domain.ts";
 import Papa from "papaparse";
@@ -158,32 +156,7 @@ export function createApp(service: Service, allowedOrigin?: string) {
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const mode = process.env.PAYMENTS_MODE ?? "mock";
-  if (!["mock", "sandbox"].includes(mode))
-    throw new Error(
-      "Solo se permiten práctica local y sandbox. Producción está bloqueada.",
-    );
-  mkdirSync(".data", { recursive: true });
-  const store = new Store(
-    process.env.STOCKRESCUE_DB ?? `.data/stockrescue-${mode}.sqlite`,
-  );
-  const provider =
-    mode === "sandbox"
-      ? new SandboxProvider(
-          new ReapSandboxAdapter({
-            apiKey: process.env.REAP_API_KEY ?? "",
-            mode: "payments",
-            returnUrl: process.env.REAP_RETURN_URL ?? "",
-            allowedMerchantIds: ["blendstation.com.mx"],
-            hostedActionHosts: (
-              process.env.REAP_HOSTED_HOSTS ?? "sandbox.collect.prava.space"
-            ).split(","),
-          }),
-        )
-      : undefined;
-  const app = createApp(
-    new Service(store, provider),
-    process.env.STOCKRESCUE_ORIGIN,
-  );
+  const app = createApp(createRuntimeService(), process.env.STOCKRESCUE_ORIGIN);
   const port = Number(process.env.PORT ?? 4317);
   app.listen(port, "127.0.0.1", () =>
     console.log(

@@ -21,7 +21,14 @@ try {
 }
 const child = spawn(
   process.execPath,
-  [fileURLToPath(new URL("./server.ts", import.meta.url))],
+  [
+    fileURLToPath(
+      new URL(
+        process.argv.includes("--agent") ? "./agent/start.ts" : "./server.ts",
+        import.meta.url,
+      ),
+    ),
+  ],
   {
     stdio: "inherit",
     env: {
