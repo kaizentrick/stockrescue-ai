@@ -1,12 +1,18 @@
-# Tablero de trabajo
+# Trabajo de StockRescue
 
-| Entregable | Estado | Responsable | Límite de archivos |
-|---|---|---|---|
-| Base, motor, persistencia, mock, adaptador Reap y primera UI | PR en borrador | Codex | src/, public/, tests/, configuración |
-| Recorrido UX y copy de recuperación | Disponible después del PR base | Por elegir | docs/UX-REVIEW.md inicialmente |
-| Pruebas exploratorias de demo | Disponible | Por elegir | docs/QA-MANUAL.md |
-| Hipótesis de comprador, entrevistas y caso comercial | Disponible | Por elegir | docs/BUSINESS.md |
-| Guion y ensayo de demo, sin publicar ni enviar | Disponible | Por elegir | docs/DEMO-SCRIPT.md |
-| Validación API de merchants y configuración sandbox segura | Bloqueado | Usuario + Codex | No pegar secretos en issues/PR |
+| Entregable | Estado de implementación | Evidencia o siguiente paso |
+|---|---|---|
+| Motor min/max, empaques, mínimos y capacidad | Implementado | Pruebas de dominio/servicio; comandos en QA |
+| Inventario editable y CSV con preview | Implementado | Recorrido y validación por fila |
+| Cotización final, aprobación y presupuesto | Implementado | Revalidación en servidor e invalidación por cambios |
+| Pedido, recuperación y recepción parcial | Implementado | Pruebas verifican reintentos, recepción parcial y segundo ciclo |
+| Caso de café Blend Station | Catálogo y cotización de una bolsa verificados en sandbox | Comprobar disponibilidad y total en cada nueva cotización |
+| Compra completa Reap sandbox | Bloqueada por autenticación hospedada | Enrollment requiere acción; no hay checkout confirmado. Detalle en REAP-INTEGRATION.md |
+| Inventario, pedidos e historial | Implementados y probados localmente | Recorrido de escritorio/móvil y recuperación |
+| GitHub y documentación del nuevo alcance | Actualizados en rama StockRescue | Repositorio renombrado; históricos preservados; integración a main mediante PR |
+| Piloto con negocio y datos reales | Pendiente | Calidad de datos, uso recurrente y utilidad económica |
+| Usuarios, varias empresas, POS y producción | Fuera del MVP | Diseño y validación independientes |
 
-Reservar tarea antes de tocar los mismos archivos. No hay demanda pagadora validada. La candidatura y video los envía el usuario.
+Acordar archivos y responsables antes del trabajo paralelo. Actualizar documentos existentes, sin informes duplicados. El estado de implementación no acredita resultados de pruebas ni una compra remota: consultar [QA](QA.md) e [integración Reap](REAP-INTEGRATION.md).
+
+Candidatura, video y publicaciones externas se coordinan con el equipo. No hay demanda pagadora ni ahorro demostrados por esta demo.

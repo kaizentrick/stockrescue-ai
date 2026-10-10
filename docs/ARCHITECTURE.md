@@ -1,22 +1,66 @@
-# Arquitectura local
+# Arquitectura de StockRescue
 
-Node 24+ ejecuta TypeScript con borrado nativo de tipos. HTTP y SQLite son módulos nativos, sin dependencias de ejecución. Frontend JavaScript y CSS propios, sin librería visual ni recursos de terceros. Lint y TypeScript se usan en desarrollo.
+Aplicación de un operador local para analizar inventario y ejecutar una reposición supervisada en práctica o Reap sandbox. Node.js 24+ ejecuta TypeScript directamente; HTTP y SQLite son nativos. La interfaz usa HTML, JavaScript y CSS. Se conserva la base anterior y se reemplaza el dominio de hardware por inventario, propuestas y recepción.
 
-- `domain.ts`: inventario sintético y reglas. La salida HDMI permite conexión directa cuando toda la cadena cumple el objetivo. Para USB-C se exige DP Alt Mode, capacidad de origen/destino y accesorio 4K/60 Hz. El cable requiere conectores, protocolo y capacidad estructurados; su nombre no acredita compatibilidad. Un adaptador asignado a otro puesto no se considera libre.
-- `service.ts`: expediente, diagnóstico, selección mínima, aprobación SHA-256 del objeto quote, cancelación, presupuesto, checkout y reconciliación. La cotización incorpora una huella del hardware, diagnóstico y versión de reglas; cambiar esa evidencia invalida la autorización además de cualquier cambio comercial.
-- `store.ts`: SQLite WAL, `BEGIN IMMEDIATE`, expediente y auditoría dentro de la misma transacción. El claim de checkout crea operación y reserva antes de ceder control asíncrono. Una segunda llamada devuelve la misma operación. PENDING y COMPLETED consumen presupuesto; FAILED/EXPIRED liberan reserva. Un intento incierto no admite cancelación/reinicio.
-- `mock.ts`: catálogo local y pedidos durables con clave única. Timeout de demo simula que el proveedor aceptó pero la respuesta se perdió; consultar recupera el resultado persistido. Si el proceso terminó entre reservar y enviar, la consulta recupera el envío con la misma operación, cotización y clave persistidas. Una respuesta tardía solo se aplica si esa operación sigue pendiente.
-- `reap.ts`: transporte sandbox opt-in separado; no conectado a rutas de demo y nunca importado en navegador. Ver REAP-INTEGRATION.md.
-- `server.ts`: solo 127.0.0.1, validación de Host/Origin y cabecera propia para mutaciones, límites de cuerpo, rutas explícitas, CSP sin scripts inline.
+## Módulos
 
-## Alcance
+| Archivo | Responsabilidad |
+|---|---|
+| `src/domain.ts` | Contratos Zod, datos iniciales, motor min/max, conversión monetaria y huella de evidencia |
+| `src/import.ts` | Papa Parse, validación de columnas/filas y restricciones del producto vinculado |
+| `src/service.ts` | Edición, propuestas, aprobación, presupuesto, enrollment, checkout, consulta y recepción |
+| `src/store.ts` | SQLite WAL y transacciones `BEGIN IMMEDIATE` sobre estado local |
+| `src/mock.ts` | Cotización ficticia y pedidos persistidos por clave |
+| `src/provider.ts` | Contrato común y normalización del proveedor sandbox |
+| `src/reap.ts` | Transporte exclusivo del sandbox de Singapur, rutas y enlaces hospedados permitidos |
+| `src/server.ts` | HTTP, Host/Origin, entradas, límites, CSP e interfaz |
+| `src/start-sandbox.ts` | Lee la credencial por 1Password CLI y arranca sandbox sin escribir secretos |
+| `public/` | Inventario, detalle, CSV, confirmaciones, pedidos y registro |
 
-Herramienta local de un responsable TI, no servicio multiusuario desplegable. No hay autenticación ni roles corporativos; no publicar ni exponer en red. Aprobación local registra actor de demostración, no identidad empresarial autenticada. El sistema solo conoce tres fixtures y una especificación de vídeo; no diagnostica controladores, hardware averiado, carga USB-PD ni combinaciones arbitrarias. La extracción es determinista, no usa LLM ni créditos.
+`src/merchant-directory.ts` conserva extractos de electrónica del prototipo anterior; no selecciona el producto actual. El café se configura en el proveedor y se documenta en [MERCHANTS.md](MERCHANTS.md).
 
-El coste mínimo se compara por total (producto + envío + impuesto) entre variantes disponibles, compatibles y permitidas del catálogo fixture. El presupuesto global demo es 1.000 MXN; por puesto configurable al reportar. La lista no es un marketplace real.
+## Cálculo
 
-## Evidencia persistente
+Cada SKU declara existencias, reservas, consumo diario estimado, entrega, revisión, días de seguridad, piezas por paquete, mínimo de paquetes, capacidad y presupuesto. Las reservas no pueden exceder existencias.
 
-Cada expediente conserva hardware, razones y alternativas, cotización actual e historial, snapshot aprobado, historial de aprobaciones, intentos anteriores, operación actual, pedido y auditoría. Se descarga JSON desde la interfaz. Los archivos de base de datos se excluyen de Git. Incidencia permanece abierta en todos los resultados: no hay cierre automático ni afirmación de instalación.
+```text
+disponible = existencias − reservas
+comprometido = suma de cantidades aún no recibidas
+posición = disponible + comprometido
+punto de reposición = consumo diario × (entrega + seguridad)
+objetivo = ceil(consumo diario × (entrega + revisión + seguridad))
+```
 
-La bitácora local es revisable pero no un registro antifraude firmado. Un administrador del archivo puede editarlo. No se presenta como sistema productivo de cumplimiento.
+Solo se propone comprar con consumo positivo y posición en el punto de reposición o por debajo. Se completa hasta el objetivo, redondeando a paquetes y respetando el mínimo. Si el objetivo ya está cubierto, la cantidad es cero. Si la compra excede capacidad, se bloquea; no se recorta silenciosamente.
+
+`purchaseQuantity` es lo que se pide al comercio; `inventoryQuantity` es lo que llegará. Tres paquetes de doce representan 36 piezas. El café vinculado usa una bolsa de 250 g por unidad de compra.
+
+Los pedidos abiertos cuentan aunque su llegada sea tardía para evitar sobrecompra. La interfaz distingue llegada oportuna/tardía y la brecha entre cobertura y plazo. Esta aproximación no simula demanda y entregas día por día; no garantiza evitar faltantes.
+
+## Compra y autorización
+
+```text
+Inventario → análisis → propuesta → cotización final → aprobación
+→ revalidación → reserva e intento persistido → checkout → consulta
+→ pedido por recibir → recepción parcial o completa
+```
+
+La evidencia relaciona producto/revisión, reglas, ajustes y pedidos entrantes. Cambiar inventario o ajustes invalida propuestas sin enviar. La aprobación se vincula por SHA-256 a la cotización completa; el servidor verifica vigencia, moneda, presupuesto y evidencia antes de enviar.
+
+El proveedor comprueba variante y disponibilidad antes de cotizar. El total procede de `amountBreakdown.finalAmount`, nunca del precio de la hoja. La normalización rechaza moneda distinta a MXN y discrepancias entre subtotal, precio unitario verificado y cantidad. Impuestos no informados no se interpretan como cero. Los importes se guardan en centavos enteros, con conversión exacta mediante decimal.js.
+
+## Persistencia y recuperación
+
+El estado incluye tienda, productos, propuestas, auditoría, enrollment, entradas previstas y recepciones. El claim reserva presupuesto y persiste intento/clave antes de llamar al proveedor. Pendientes y confirmados consumen presupuesto; fallos definitivos y expiraciones liberan reserva. El presupuesto es el límite acumulado de la demo, no un saldo bancario ni un límite mensual renovable.
+
+Un timeout conserva el intento. Con checkout ID, se consulta; sin él, la recuperación usa clave y cuerpo persistidos dentro de la ventana permitida. Después de 24 horas un resultado incierto requiere revisión. El retorno del navegador y una respuesta inicial sin comprobación del proveedor no acreditan éxito.
+
+Cada recepción tiene clave idempotente. Se valida contra el saldo pendiente y la capacidad; actualización de stock, saldo recibido y registro se guardan en una transacción. Un pedido confirmado no incrementa existencias.
+
+## Modos y límites
+
+- `mock`: práctica sin servicios externos, `.data/stockrescue-mock.sqlite`.
+- `sandbox`: proveedor conectado a `https://sg.sandbox.api.reap.global`, con `.data/stockrescue-sandbox.sqlite`. Configuración y evidencia en [REAP-INTEGRATION.md](REAP-INTEGRATION.md).
+- Cualquier otro modo se rechaza; no hay pagos productivos.
+
+MVP monotienda, sin autenticación, roles, aislamiento multitenant, POS, forecasting estadístico, reembolsos o conciliación contable. El registro local es revisable, no un registro antifraude firmado; un administrador del archivo puede editarlo. La validación remota se registra por separado del estado de implementación.

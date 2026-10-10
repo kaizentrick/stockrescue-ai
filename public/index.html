@@ -1,54 +1,305 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-MX">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light" />
-    <title>Reap Workplace Agent · Simulación local</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#193c32" />
+    <title>StockRescue · Reposición con control</title>
     <link rel="stylesheet" href="/style.css" />
     <script src="/app.js" defer></script>
   </head>
   <body>
-    <a class="skip" href="#dossier">Ir al expediente</a>
-    <header>
-      <div class="identity">
-        Reap Workplace Agent <span>Nombre provisional</span>
-      </div>
-      <p>Simulación local · sin pagos reales</p>
+    <a class="skip" href="#inventory">Ir al inventario</a>
+    <header class="masthead">
+      <a class="wordmark" href="/"
+        >StockRescue<span>Reposición con control</span></a
+      >
+      <p id="mode">Cargando entorno…</p>
+      <button id="settings-open" class="quiet">Mi tienda</button>
     </header>
-    <div class="workspace">
-      <aside>
-        <h1>Conectar el puesto. <br />Comprar solo lo necesario.</h1>
-        <p>
-          Expediente de TI para comprobar puertos, reutilizar equipo y autorizar
-          la compra mínima compatible.
-        </p>
-        <label for="workplace">Puesto de trabajo</label
-        ><select id="workplace"></select>
-        <div id="inventory-summary"></div>
-        <p class="fixture-note">
-          Demo ficticia: 3 portátiles, 3 monitores y 2 adaptadores. Modelos,
-          compatibilidad, proveedores y precios son fixtures; no son datos de
-          Reap.
-        </p>
-        <details>
-          <summary>Alcance de esta demo</summary>
+    <main id="app" aria-busy="true">
+      <section class="introduction">
+        <div>
+          <h1>Lo que tienes. <br /><em>Lo que sigue.</em></h1>
           <p>
-            Reglas deterministas, sin proveedor de IA. No se envían datos a
-            servicios externos. La lista de merchants está documentada;
-            catálogo y variantes API pendientes de verificar.
+            Anticípate a los faltantes y revisa cada compra antes de enviarla.
           </p>
-        </details>
-      </aside>
-      <main id="dossier" tabindex="-1">
-        <div id="notice" role="status" aria-live="polite"></div>
-        <div id="error" role="alert"></div>
-        <div id="content"><p>Cargando inventario local…</p></div>
-      </main>
-    </div>
-    <footer>
-      Proyecto independiente para el hackathon Reap. Un pedido confirmado no
-      acredita instalación ni resolución.
-    </footer>
+        </div>
+        <div class="start">
+          <p id="shop-name">Preparando tu inventario…</p>
+          <div class="actions">
+            <button id="import-open" class="primary">Importar inventario</button
+            ><a href="/api/template" download>Descargar ejemplo CSV</a>
+          </div>
+          <p class="small">
+            Empieza con los datos de ejemplo o carga los tuyos. Las compras de
+            esta demo no mueven dinero real.
+          </p>
+        </div>
+      </section>
+      <div
+        id="notice"
+        class="notice"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></div>
+      <div id="error" class="error" role="alert" hidden></div>
+      <div
+        id="summary"
+        class="summary"
+        aria-label="Resumen del inventario"
+      ></div>
+      <nav class="workspace-nav" aria-label="Vistas de la tienda">
+        <button data-view="inventory" aria-current="page">Inventario</button
+        ><button data-view="orders">
+          Pedidos y recepción <span id="order-count"></span></button
+        ><button data-view="history">Historial</button
+        ><button id="refresh" class="refresh">Actualizar</button>
+      </nav>
+      <section id="inventory" class="workspace">
+        <div class="ledger">
+          <div class="ledger-heading">
+            <h2>Tu inventario</h2>
+            <label
+              >Mostrar<select id="filter">
+                <option value="all">Todos los productos</option>
+                <option value="attention">Necesitan atención</option>
+                <option value="incoming">Con mercancía en camino</option>
+              </select></label
+            >
+          </div>
+          <label class="search-label"
+            >Buscar por producto o SKU<input
+              id="search"
+              type="search"
+              placeholder="Café, filtros…"
+              autocomplete="off"
+          /></label>
+          <div
+            class="table-scroll"
+            tabindex="0"
+            aria-label="Tabla de inventario, desplazable"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Producto</th>
+                  <th scope="col">Disponible</th>
+                  <th scope="col">Cobertura</th>
+                  <th scope="col">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="inventory-rows"></tbody>
+            </table>
+          </div>
+          <p class="small ledger-foot">
+            Existencias y consumo iniciales de ejemplo. El café está vinculado a
+            un producto de la lista de Reap; su disponibilidad se confirma al
+            cotizar.
+          </p>
+        </div>
+        <section
+          id="detail"
+          class="detail"
+          aria-label="Detalle de reposición"
+        ></section>
+      </section>
+      <section id="orders" class="secondary-view" hidden>
+        <div class="section-title">
+          <h2>Pedidos y recepción</h2>
+          <p>Pagar reserva el pedido. Recibirlo actualiza tus existencias.</p>
+        </div>
+        <div id="order-list"></div>
+      </section>
+      <section id="history" class="secondary-view" hidden>
+        <div class="section-title">
+          <h2>Registro de decisiones</h2>
+          <a href="/api/export" download="stockrescue-registro.json"
+            >Exportar registro JSON</a
+          >
+        </div>
+        <div id="history-list"></div>
+      </section>
+      <footer>
+        <p>StockRescue · MVP de reposición</p>
+        <p>Datos locales · <span id="updated">Sin sincronizar</span></p>
+      </footer>
+    </main>
+    <dialog id="import-dialog" aria-labelledby="import-title">
+      <form method="dialog" class="dialog-heading">
+        <h2 id="import-title">Importar inventario</h2>
+        <button class="quiet" aria-label="Cerrar importación">Cerrar</button>
+      </form>
+      <p>
+        Actualiza por SKU o agrega productos. Se conservan los pedidos
+        pendientes y se invalidan las propuestas sin enviar.
+      </p>
+      <p class="small">
+        Usa las columnas de la plantilla.
+        <strong>budget está en centavos MXN</strong>: 300000 equivale a
+        $3,000.00.
+      </p>
+      <label
+        >Archivo CSV (máximo 200 KB)<input
+          id="csv-file"
+          type="file"
+          accept=".csv,text/csv"
+      /></label>
+      <div id="csv-preview" aria-live="polite"></div>
+      <div class="actions">
+        <button id="import-confirm" class="primary" disabled>
+          Confirmar importación</button
+        ><a href="/api/template" download>Descargar plantilla</a>
+      </div>
+    </dialog>
+    <dialog id="edit-dialog" aria-labelledby="edit-title">
+      <form id="edit-form">
+        <div class="dialog-heading">
+          <h2 id="edit-title">Actualizar producto</h2>
+          <button type="button" data-close="edit-dialog" class="quiet">
+            Cerrar
+          </button>
+        </div>
+        <p id="edit-name"></p>
+        <input type="hidden" name="id" />
+        <div class="form-grid">
+          <label
+            >Existencias<input
+              name="onHand"
+              type="number"
+              min="0"
+              step="1"
+              required /></label
+          ><label
+            >Reservadas<input
+              name="reserved"
+              type="number"
+              min="0"
+              step="1"
+              required /></label
+          ><label
+            >Consumo diario estimado<input
+              name="dailyDemand"
+              type="number"
+              min="0"
+              step="0.1"
+              required /></label
+          ><label
+            >Entrega estimada (días)<input
+              name="leadDays"
+              type="number"
+              min="1"
+              max="365"
+              required /></label
+          ><label
+            >Revisar cada (días)<input
+              name="reviewDays"
+              type="number"
+              min="1"
+              max="90"
+              required /></label
+          ><label
+            >Reserva de seguridad (días)<input
+              name="safetyDays"
+              type="number"
+              min="0"
+              max="90"
+              required /></label
+          ><label
+            >Capacidad máxima<input
+              name="maxStock"
+              type="number"
+              min="1"
+              required /></label
+          ><label
+            >Límite por reposición (MXN)<input
+              name="budget"
+              type="number"
+              min="0"
+              step="0.01"
+              required
+          /></label>
+        </div>
+        <p class="small">
+          Cambiar estos datos invalida las cotizaciones y aprobaciones sin
+          enviar.
+        </p>
+        <p class="form-error" role="alert"></p>
+        <button type="submit" class="primary">Guardar y recalcular</button>
+      </form>
+    </dialog>
+    <dialog id="settings-dialog" aria-labelledby="settings-title">
+      <form id="settings-form">
+        <div class="dialog-heading">
+          <h2 id="settings-title">Mi tienda</h2>
+          <button type="button" data-close="settings-dialog" class="quiet">
+            Cerrar
+          </button>
+        </div>
+        <p>
+          Estos datos se usan para obtener el total con envío. El ejemplo
+          contiene una dirección de prueba.
+        </p>
+        <div class="form-grid">
+          <label
+            >Nombre de la tienda<input
+              name="name"
+              required
+              maxlength="80" /></label
+          ><label
+            >Presupuesto de la demo (MXN)<input
+              name="budget"
+              type="number"
+              min="0"
+              step="0.01"
+              required /></label
+          ><label class="span-two"
+            >Correo del titular<input
+              name="email"
+              type="email"
+              required /></label
+          ><label>Nombre<input name="firstName" required /></label
+          ><label>Apellido<input name="lastName" required /></label
+          ><label class="span-two"
+            >Calle y número<input name="addressLine1" required /></label
+          ><label>Ciudad o alcaldía<input name="city" required /></label
+          ><label>Estado<input name="region" required /></label
+          ><label
+            >Código postal<input
+              name="postalCode"
+              required
+              pattern="[0-9]{5}"
+              inputmode="numeric" /></label
+          ><label
+            >Teléfono con +52<input name="phone" required type="tel"
+          /></label>
+        </div>
+        <p class="form-error" role="alert"></p>
+        <button type="submit" class="primary">Guardar tienda</button>
+      </form>
+    </dialog>
+    <dialog id="approval-dialog" aria-labelledby="approval-title">
+      <form id="approval-form">
+        <div class="dialog-heading">
+          <h2 id="approval-title">Confirma esta reposición</h2>
+          <button type="button" data-close="approval-dialog" class="quiet">
+            Volver
+          </button>
+        </div>
+        <div id="approval-summary"></div>
+        <label class="consent"
+          ><input id="approve-consent" type="checkbox" required />Revisé el
+          producto, la cantidad, el envío y el total. Autorizo esta compra de
+          prueba.</label
+        >
+        <p class="form-error" role="alert"></p>
+        <button type="submit" class="primary">Aprobar este total</button>
+      </form>
+    </dialog>
+    <noscript
+      >Activa JavaScript para importar inventario y gestionar
+      reposiciones.</noscript
+    >
   </body>
 </html>

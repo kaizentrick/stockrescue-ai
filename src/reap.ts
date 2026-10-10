@@ -1,7 +1,4 @@
-/** Server-only transport. Never imported by the local demo browser or server routes.
- * Activation requires a separately approved credential and verified merchant allowlist.
- * No cards, mandate endpoints or externalCheckout are accepted here.
- */
+/** Server-only transport locked to the Reap Singapore sandbox. */
 type PaymentConfig = {
   apiKey: string;
   mode: "payments";
@@ -28,12 +25,13 @@ export type ShippingAddress = {
   city: string;
   postalCode: string;
   country: string;
+  region?: string;
 };
 export type ReapCheckout = {
   id: string;
   status: "REQUIRES_ACTION" | "PROCESSING" | "COMPLETED" | "FAILED" | "EXPIRED";
-  quoteId: string;
-  enrollmentId: string;
+  quoteId?: string;
+  enrollmentId?: string;
   orderId?: string;
   finalAmount?: { amount: number; currency: string };
   nextAction?: { type: "REDIRECT"; url: string; expiresAt?: string } | null;
@@ -116,7 +114,7 @@ export class ReapSandboxAdapter {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(60000),
         redirect: "error",
       });
     } catch {
@@ -134,10 +132,15 @@ export class ReapSandboxAdapter {
       throw new Error(
         "REAP_REDIRECT_BLOCKED: respuesta fuera del destino autorizado.",
       );
-    if (!response.ok)
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: { code?: string };
+      };
+      const code = payload.error?.code;
       throw new Error(
-        `REAP_HTTP_${response.status}: consultar política de recuperación sin registrar cuerpos ni headers.`,
+        `REAP_HTTP_${response.status}: ${typeof code === "string" && /^[A-Z0-9_]+$/.test(code) ? code : "REQUEST_FAILED"}`,
       );
+    }
     return (await response.json()) as T;
   }
   enrollment(owner: { id: string; email: string }, key: string) {
@@ -158,10 +161,11 @@ export class ReapSandboxAdapter {
     );
   }
   getEnrollment(id: string) {
-    return this.request<{ id: string; status: string }>(
-      `/agentic/enrollments/${encodeURIComponent(id)}`,
-      "GET",
-    );
+    return this.request<{
+      id: string;
+      status: string;
+      nextAction?: { url: string } | null;
+    }>(`/agentic/enrollments/${encodeURIComponent(id)}`, "GET");
   }
   search(query: string, key: string) {
     return this.request<unknown>(
@@ -195,6 +199,7 @@ export class ReapSandboxAdapter {
   quote(
     input: {
       variantId: string;
+      quantity?: number;
       merchantId: string;
       email: string;
       shippingAddress: ShippingAddress;
@@ -207,9 +212,35 @@ export class ReapSandboxAdapter {
       "/agentic/quotes",
       "POST",
       {
-        items: [{ variantId: input.variantId, quantity: 1 }],
+        items: [{ variantId: input.variantId, quantity: input.quantity ?? 1 }],
         email: input.email,
         shippingAddress: input.shippingAddress,
+      },
+      key,
+    );
+  }
+  externalQuote(
+    quantity: number,
+    email: string,
+    shippingAddress: ShippingAddress,
+    key: string,
+  ) {
+    if (
+      !this.#paymentConfig().allowedMerchantIds.includes("blendstation.com.mx")
+    )
+      throw new Error("Merchant no admitido.");
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100)
+      throw new Error("Cantidad comercial inválida.");
+    return this.request<unknown>(
+      "/agentic/quotes",
+      "POST",
+      {
+        externalCheckout: {
+          merchantDomain: "blendstation.com.mx",
+          checkoutUrl: `https://blendstation.com.mx/cart/47607777984690:${quantity}`,
+        },
+        email,
+        shippingAddress,
       },
       key,
     );
@@ -262,7 +293,7 @@ export class ReapSandboxAdapter {
       u.protocol !== "https:" ||
       !config.hostedActionHosts.includes(u.hostname)
     )
-      throw new Error("Destino alojado no verificado.");
+      throw new Error(`Destino alojado no verificado: ${u.hostname}.`);
     return u.toString();
   }
 }

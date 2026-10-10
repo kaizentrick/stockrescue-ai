@@ -1,44 +1,51 @@
-# Evidencia de verificación
+# Validación de StockRescue
 
-## Automatizada
+Validación local del 9 de octubre de 2026, macOS, Node 26.8.2. Estas pruebas distinguen simulación local y respuestas reales del sandbox. No acreditan operación productiva.
 
-`npm run check`: ESLint + TypeScript estricto + 29 pruebas Node, sin fallos. Se ejecutaron con permiso para sockets loopback; el sandbox inicial bloqueaba `listen`, no era un fallo de lógica. `npm run build` y `git diff --check` también pasan.
+## Automatización reproducible
 
-Cobertura: conexión directa/reutilización sin compra, accesorio incompatible, merchant no admitido, datos insuficientes, bloqueo de búsqueda innecesaria, presupuesto por puesto y global, aprobación invalidada, vencimiento, 12 checkouts concurrentes sin duplicar, reserva competida desde dos conexiones SQLite, timeout pendiente y reconciliación con misma clave, cancelación, fallos/expiración y nuevo intento, persistencia tras reinicio, snapshots e historial, reporte repetido, retorno falsificado, rechazo de origen externo y contrato del transporte Reap usando fetch falso.
+```sh
+npm ci
+npm run check
+npm run build
+npx playwright install chromium webkit
+npm run test:ui
+```
 
-No se llamó a Reap ni se usó una credencial. Los tests del transporte no prueban habilitación de cuenta, compatibilidad de merchant ni ejecución sandbox real.
+- `check`: ESLint, TypeScript estricto y **36 pruebas Node**.
+- `build`: comprobación TypeScript; el runtime ejecuta TypeScript nativo de Node, sin bundle de producción.
+- **12 pruebas de navegador**, seis en Chromium 156 y seis en WebKit 27.2.
+- `npm audit --omit=dev --audit-level=high`: cero vulnerabilidades reportadas en dependencias de ejecución.
+- `git diff --check`: sin errores. Búsqueda de patrones de claves y enlaces alojados privados en archivos versionables: sin coincidencias.
 
-Regresiones adicionales: interrupción entre reserva y envío recuperada con la misma clave; cable sin protocolo/capacidad suficiente nunca aceptado por su nombre; aprobación invalidada al cambiar hardware o evidencia del diagnóstico.
+El servidor de UI existe solo en `tests/ui/server.ts`, puerto 4325 y SQLite en memoria. Restablece el estado antes de cada caso; jamás construye un proveedor sandbox. Resultados, trazas y capturas de fallo van a `.tmp/codex/`, fuera de Git. El endpoint de reset no existe en el servidor de producto.
 
-Revisión independiente de fiabilidad sobre 8e26a0e: ambos hallazgos cerrados y enlace aprobación/evidencia revalidado; 23 pruebas sin HTTP más comprobación adicional de cambio de diagnóstico. Sin bloqueadores ni mayores nuevos dentro del MVP local. El coordinador ejecutó la suite completa de 24, incluida HTTP.
+## Qué cubren las pruebas
 
-Cinco pruebas posteriores cubren el ejecutor de catálogo: capacidad limitada a tres operaciones, rechazo de métodos/rutas fuera de alcance, host/URLs alternativos, redirecciones 301/302/303/307/308 y respuestas ya redirigidas, y configuración externa que intenta ampliar el alcance. No usan red ni una clave real.
+Dominio y dinero: min/max, empaques, mínimos, capacidad, reservas, consumo cero, pedidos tardíos, brecha de stock por fecha de llegada y precisión decimal que evita una unidad adicional por redondeo binario. Identidad canónica del café y correspondencia con la fila 20 del directorio oficial.
 
-Revisión independiente del aislamiento de catálogo: 7/7 pruebas del transporte y diff limpio, sin bypass concreto ni bloqueadores en el alcance revisado. No acredita integración real.
+Transacciones: invalidar aprobación al cambiar inventario, envío, cotización o precio; vencimiento y presupuestos; checkout concurrente y entre instancias SQLite; timeout y recuperación tras reinicio con la misma clave; no repetir automáticamente un intento incierto de más de 24 horas. Respuestas tardías no reactivan propuestas canceladas. Pago no equivale a recepción.
 
-## CI
+Contrato: sandbox fijo, rutas permitidas, hosts alojados, redirecciones rechazadas, campos fiscales opcionales, subtotal consistente con cantidad y precio unitario, rechazo de cotizaciones antiguas sin evidencia y renovación de enrollment sin sustituir uno activo. HTTP exige origen y formato adecuados, no expone credenciales y no acepta un retorno falsificado como pago.
 
-No hay CI configurada. Verificación remota sobre `1b4d20011ce9726213d8fabe99010ff30ed67c12`: cero workflows, ejecuciones, check runs y commit statuses. El agregado vacío `pending` no es una ejecución. Las comprobaciones de este documento son locales.
+Navegador: inventario → cotización → aprobación → vinculación ficticia → compra simulada → recepciones parciales → segundo ciclo. Pérdida de respuesta después de aceptar recepción conserva la intención y evita duplicar stock. CSV inválido no modifica datos. Diálogos accesibles por teclado, Escape, foco después de guardar y aprobar. Inventario/detalle/aprobación a 390 y 1440 px; cotización a 320 px con texto duplicado.
 
-Propuesta opcional, no aplicada: workflow de PR con permisos `contents: read`, Node 24 y `npm ci`/`npm run check`/`npm run build`, sin secretos, deploy ni `pull_request_target`. Antes de configurarlo, confirmar disponibilidad de minutos incluidos y evitar cargos; no se modificaron permisos ni facturación.
+## Revisión de interfaz
 
-## Interfaz local
+Tres roles independientes: UX/contenido, UI/espaciado y responsive/accesibilidad/interacción. Se corrigieron aviso permanente de carga, comienzo demasiado bajo en móvil, continuidad del segundo ciclo, copia de recepción parcial, mensajes CSV, concordancias, nombres accesibles de diálogos, restitución de foco, desbordamiento al ampliar texto y selectores nativos WebKit que reducían el área táctil.
 
-Navegador integrado de Codex en macOS (versión de motor no expuesta por la herramienta), español; pruebas mediante UI:
+Inspección de Chromium y WebKit; anchos representativos de 320, 390, 768, 1024 y 1440 px, más vecinos de los cambios de diseño en 480, 800 y 1100 y hasta 1660 px en el barrido visual. Se distinguieron teclado, toque sin hover, viewport corto, desconexión y recuperación, motion normal y reducido. El analizador estático produjo cero errores y una advertencia MOT004: revisión en ambos motores confirmó que la transición de color se desactiva con `prefers-reduced-motion`.
 
-- P-01 conexión directa sin compra.
-- P-02 información insuficiente, cancelación y nuevo reporte con reutilización.
-- P-03 cotización, aprobación, recotización e invalidación; fallo definitivo, nuevo intento, expiración, nuevo intento, timeout y consulta del mismo intento; pedido confirmado con instalación pendiente.
-- Servidor QA desechable detenido justo antes del checkout: al fallar fetch, desaparece ejecutar checkout y queda «Consultar expediente». La incertidumbre se conserva en sessionStorage por expediente.
-- Vencimiento de cotización aprobado observado en servidor QA separado: ver capturas locales de revisión.
-- Smoke final tras reiniciar el servidor con las correcciones: cancelación, nuevo reporte y diagnóstico directo sin compra; captura `final-no-purchase.jpg` con viewport normal restaurado.
+Límites: texto al 200 % se simuló duplicando tamaños computados; no equivale a una certificación de zoom en todos los navegadores. Sin pruebas físicas de iOS/Android, VoiceOver, lector de pantalla completo ni certificación WCAG. No es PWA ni promete funcionamiento desconectado del servidor.
 
-Capturas y matrices en `artifacts/` local (excluidas del repositorio). No contienen secretos ni datos reales.
+## Sandbox real
 
-## Responsive y especialistas
+Con la credencial del evento se verificaron búsqueda/detalle, variante y cotización de una bolsa de café por **$360 MXN**, y creación/consulta de enrollment EXTERNAL. Se revisó y aprobó una cotización desde la UI; intentar enviar sin enrollment activo produjo rechazo en servidor, sin crear operación, pedido ni aumentar existencias.
 
-Matriz DOM de estado pendiente: 320, 390, 600, 759, 760, 761, 768, 900, 1024, 1440 y 1600 px. Sin overflow horizontal de página. Consulta pendiente y descarga JSON: 44 px en todos esos anchos. Tablas con scroll horizontal local. Capturas de cotización, pendiente, confirmado, información insuficiente y reutilización a anchos representativos.
+**El flujo remoto completo sigue bloqueado**: la autenticación Visa alojada respondió 403 y el enrollment permanece REQUIRES_ACTION. No hay checkout COMPLETED ni orderId sandbox. La simulación local aprobada por los tests no sustituye esta evidencia. Detalles y referencias no secretas en [REAP-INTEGRATION.md](REAP-INTEGRATION.md).
 
-Tres revisores independientes: UX/contenido, UI/espaciado, responsive/accesibilidad/interacción. Hallazgos corregidos: estado operativo antes del diagnóstico histórico, recuperación tras pérdida de conexión, retirada de aprobación vencida, objetivo táctil de exportación y separación del título móvil. Revalidación de 9ff255e: los tres revisores cerraron los hallazgos observados, con 0 bloqueadores y 0 mayores abiertos. Las capturas finales verificadas son final-confirmed-wide.jpg (viewport 1440×1000), final-confirmed-mobile.jpg (390×844) y pending-fixed-390/1440. Los archivos antiguos confirmed-fixed-* estaban mal rotulados y no se usan como evidencia de ancho. network-loss-320.jpg acredita pérdida de conexión en composición de escritorio, no viewport 320.
+El lanzador `npm run sandbox` fue probado con 1Password CLI: servidor iniciado en 127.0.0.1:4317, sin llave en argumentos, archivos ni salida. La práctica de revisión quedó en el puerto 4319 con su base independiente.
 
-Límites: sin VoiceOver, dispositivos físicos, zoom de 200–400 %, Chrome/Firefox ni garantía universal de compatibilidad. No se ha probado identidad corporativa, despliegue público ni operación productiva. No se afirma cumplimiento WCAG auditado integralmente. El analizador estático de diseño reportó 0 errores y 0 advertencias; complementa, no reemplaza, revisión visual.
+## GitHub
+
+`.github/workflows/check.yml` ejecuta en cada PR: Node 26, `npm ci`, check, build y Chromium/WebKit en Ubuntu. Permisos de solo lectura de contenido, sin secretos, despliegue ni llamadas sandbox. Los resultados remotos se consultan en Checks del PR; las pruebas enumeradas arriba fueron ejecutadas localmente.

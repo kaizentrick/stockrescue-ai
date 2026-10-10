@@ -1,56 +1,49 @@
-# Contrato sandbox y límites de integración
+# Integración Reap de StockRescue
 
-Consultado el 10 de octubre de 2026. La aplicación servida es una **simulación local**; no se ha probado la credencial sandbox ni se ha realizado enrollment, quote o checkout real de Reap.
+Verificado el 9 de octubre de 2026 (CDMX). La aplicación conecta con la API sandbox; **la compra completa aún está bloqueada por la autenticación alojada del proveedor**. No se ha cobrado ni movido dinero real.
 
-## Implementado
+## Qué se verificó en vivo
 
-`src/reap.ts` es un transporte server-side independiente, con base fija `https://sg.sandbox.api.reap.global`, `Authorization: Bearer`, versión `2025-02-14`, timeout y redirecciones HTTP rechazadas. No se importa desde frontend. Expone las operaciones documentadas de enrollment EXTERNAL, lectura ACTIVE, search/details/variant, quote, selección de envío, lectura de quote, checkout y consulta de checkout. El único valor de simulación enviado es `X-Simulate-Checkout: COMPLETED`. Los errores no incluyen cuerpos, cabeceras o credenciales.
+- Host fijo `https://sg.sandbox.api.reap.global`, versión `2025-02-14`; clave del correo del evento guardada en 1Password, nunca en Git ni frontend.
+- Búsqueda y detalle: Blend Station, café Guerrero Atoyac, variante **250 gr / Grano**, precio unitario **$300 MXN**, `available=true`.
+- Producto Reap `prd_77db2c922b12471b8f6588c3f2a9f135`; variante Reap `var_576f1eddfa4a4ad18d6529b0199d61fe`. La variante Shopify del directorio es una referencia distinta y no se envía como variante Reap.
+- `POST /agentic/quotes` con `items` y cantidad **1**: quote `159384f4-9306-48da-ba7c-20b191c78865`, subtotal **$300**, envío **$60**, total **$360 MXN**; vencimiento `2026-10-10T02:41:16.545Z`. Es evidencia histórica, no una cotización reutilizable después de vencer.
+- Escenario explícito de ejemplo: 2 bolsas disponibles, consumo 0.5/día, entrega 3 días, revisión 2 y seguridad 1. Punto de reposición 2, objetivo 3: comprar 1 bolsa. Los datos de consumo son sintéticos, no ventas reales del comercio.
+- Enrollment EXTERNAL creado y consultado; estado **REQUIRES_ACTION**. Referencia del bloqueo: `7652d656-06e2-4717-83e3-8b6465fcbc15`.
 
-El transporte exige una clave de idempotencia al llamador para cada POST. El servicio mock persiste claves antes del envío y usa reserva atómica SQLite. El transporte Reap no activa automáticamente el servicio mock: conectar un adaptador externo requiere completar el mapeo y las comprobaciones siguientes. Tener métodos de transporte **no equivale a integración verificada**.
+La UI también aprobó la cotización posterior `4cd075b8-11dd-4c3c-a0c4-e13b0ad1e108` por el mismo total. El servidor rechazó checkout sin enrollment activo: cero operaciones de pago y cero pedidos; las existencias permanecieron en dos bolsas.
 
-## Ejecutor acotado de catálogo
+## Bloqueo observado y límite de la validación
 
-`createCatalogSandboxExecutor(apiKey)` crea una capacidad inmutable con únicamente `search`, `details` y `variant`. Construirla no lee archivos ni variables de entorno y no envía solicitudes. La entrada persistente y el uso de la credencial requieren autorización específica. El usuario autorizó ese alcance de catálogo; el valor debe introducirlo personalmente en el archivo local ignorado y confirmar que terminó antes de cargarlo. Esta restricción no activa la integración ni acredita una llamada real.
+La página alojada `sandbox.collect.prava.space` devuelve “Authentication Failed” antes de poder introducir la tarjeta de prueba. El navegador observó **403** en `https://sandbox.auth.visa.com/apn/vts-ber/oauth2/token` y el componente Visa reportó `AUTH_FAILED: Initialisation failed due to errors.` También se probó un autenticador virtual de navegador de pruebas; no resolvió la inicialización. Las sesiones alojadas son de un solo uso: la UI permite crear un enlace nuevo y consultar de nuevo el estado.
 
-La prueba de catálogo solo admite:
+**No hay evidencia de enrollment ACTIVE, checkout COMPLETED ni orderId sandbox.** No se introdujeron datos de una tarjeta real. StockRescue mantiene deshabilitada la compra mientras el enrollment no esté activo. El flujo completo con confirmación y recepción está verificado únicamente en el proveedor local simulado, claramente identificado en pantalla.
 
-| Método | Ruta literal |
-|---|---|
-| POST | `/agentic/products/search` |
-| POST | `/agentic/products/details` |
-| POST | `/agentic/products/variant` |
+Para continuar con Reap se necesita que su sandbox complete la inicialización de Visa. Después: obtener quote vigente, aprobar snapshot, completar enrollment alojado, consultar ACTIVE, enviar checkout sandbox y verificar por GET el mismo checkout COMPLETED con orderId y finalAmount. La recepción física se registra aparte; un pago nunca aumenta existencias automáticamente.
 
-Destino fijo: `https://sg.sandbox.api.reap.global`, HTTPS y puerto estándar. No se acepta URL/base configurable. Se rechazan antes de construir cabeceras o llamar al transporte otros métodos, rutas de enrollment/quote/checkout, URLs absolutas, hosts alternativos, query/fragmento, rutas escapadas y segmentos de navegación. No se permite cabecera de simulación en catálogo. Cada operación exige la clave de idempotencia del llamador.
+## Discrepancias que el MVP bloquea
 
-Fetch usa `redirect: error`. También se rechazan respuestas 3xx, marcadas como redirigidas o cuya URL no coincide con la solicitada, incluso ante un transporte de prueba que ignore esa opción. Los errores no imprimen la clave, headers, cuerpo ni destino suministrado.
+Una prueba con cuatro bolsas por `items` devolvió `409 VARIANT_UNAVAILABLE` aunque el detalle señalaba disponibilidad general. Un experimento externo con carrito de cuatro devolvió subtotal de una sola bolsa; **esa vía no se utiliza en el proveedor del MVP**. No inferimos stock de cuatro ni descuentos. El subtotal debe coincidir con precio unitario verificado × cantidad; cualquier diferencia bloquea aprobación y checkout. Cotizaciones anteriores sin esta evidencia requieren cotizar de nuevo.
 
-El adaptador general también adopta alcance `catalog` por defecto y copia su configuración para impedir ampliación por mutación externa. Su scaffold de pagos exige `mode: payments` explícito y conserva una lista cerrada de rutas; este modo sigue desconectado de la aplicación, no está autorizado por el permiso de catálogo y no es integración comprobada. El ejecutor de catálogo no expone ese selector ni el método genérico de transporte.
+Shipping y campos fiscales opcionales se aceptan como no desglosados cuando faltan. El total final siempre proviene de Reap. No se calcula un total alternativo ni se hace conversión estimada de moneda.
 
-Las pruebas utilizan exclusivamente credenciales ficticias y fetch falso. Esta restricción es del código cliente; no equivale a restringir permisos de la API key en Reap ni evita que otro programa con acceso al archivo use la credencial.
+## Ejecución segura
 
-## Pendiente antes de activar tráfico Reap
+```bash
+npm ci
+npm run sandbox
+```
 
-1. El usuario debe autorizar específicamente configuración persistente y aportar `REAP_API_KEY` por entrada segura. No leerla del correo ni pegarla en chat, logs o commits. `.env.example` mantiene campos vacíos. No hay provisión automática ni creación de llaves.
-2. La lista oficial fue aportada y verificada por el hilo padre; ver MERCHANTS.md. Confirmar aún identificadores API, país, moneda y disponibilidad para esta integración. No se presupone Shopify ni otra plataforma. `fixture-office` es inventado y no se debe enviar a Reap.
-3. Configurar retorno HTTPS y hosts alojados verificados. El enrollment debe ser EXTERNAL; los datos de tarjeta se introducen únicamente en la página alojada por Reap. Esta tarea no prueba tarjetas ni crea cuentas.
-4. Mapear respuestas reales de producto/variante a capacidad de vídeo respaldada por evidencia del fabricante; no deducir protocolo de un título de catálogo. Aplicar allowlist al merchant realmente asociado a esa variante, no al texto suministrado por el cliente.
-5. Mapear cotización y `shippingOptions` seleccionada: mostrar `amountBreakdown.finalAmount`, moneda y `expiresAt`; registrar dirección y opción de envío dentro del snapshot. No sumar nuevamente impuestos ya incluidos. El mock usa centavos enteros; la API devuelve cantidades monetarias en unidades mayores, que requieren conversión decimal exacta.
-6. Releer quote y enrollment ACTIVE antes de ejecutar. Comparar snapshot aprobado, reservar presupuesto en transacción, persistir cuerpo e Idempotency-Key. Si cambian precio, variante, merchant, cantidad, envío, destino, moneda o vencimiento, pedir nueva aprobación.
-7. Manejar `nextAction` alojada y luego GET checkout. El retorno no acredita éxito. Solo COMPLETED con orderId y finalAmount válidos confirma pedido. Instalación/incidencia siguen pendientes. Reconciliar diferencias entre cotización y finalAmount para revisión humana.
-8. Persistir respuestas verificadas y consultar PROCESSING/REQUIRES_ACTION. Ante timeout sin checkoutId, conservar estado incierto y reintentar **mismo cuerpo y clave**, solo dentro de las 24 h de retención documentadas. Pasadas 24 h, revisión manual; nunca una nueva compra a ciegas. 409 en curso requiere backoff; 429 puede reintentarse con misma clave. Los errores de negocio requieren corrección, nueva cotización y aprobación; no generar claves nuevas automáticamente.
+Requiere 1Password CLI (`op`) con la bóveda desbloqueada y un elemento **StockRescue Reap sandbox**, campo secreto **credential**. Un selector diferente puede indicarse mediante `REAP_VAULT_ITEM`. El lanzador captura la credencial por pipe y la pasa únicamente al entorno del proceso hijo. No imprime el valor ni crea archivos de secretos. La credencial del evento vence al comenzar el **11 de octubre de 2026, 00:00 CDMX**.
 
-## Discrepancias oficiales conservadas
+La app escucha solo en `127.0.0.1:4317`; SQLite separa práctica y sandbox. El retorno HTTPS de la demo apunta a la documentación oficial de Reap: el usuario vuelve a la pestaña original y consulta el estado. **No hay callback HTTPS público ni autenticación multiusuario**. No publicar este servidor local; una entrega pública exige autenticación y aislamiento por tienda, HTTPS propio y revisión de despliegue.
 
-- La guía one-time describe mandatos pero declara `MANDATES_AVAILABLE = false` y endpoints no disponibles. No hay código que los invoque ni una suposición de habilitación.
-- `externalCheckout` aparece en guías con requisito de allowlist por integración y referencias con distinta disponibilidad. No implementamos esa vía: hay que confirmarla con Reap.
-- La guía muestra sandbox genérico y la referencia create-checkout publica `sg.sandbox.api.reap.global` y `2025-02-14`. Se fija la referencia regional indicada por el contrato y se debe validar con Reap al habilitar la cuenta.
-- Credencial entregada por la organización: vencimiento comunicado al comenzar el 11 de octubre de 2026, 00:00 CDMX (06:00 UTC). Valor y validez no inspeccionados.
+El transporte bloquea producción y destinos alternativos. Checkout sandbox utiliza la cabecera oficial `X-Simulate-Checkout: COMPLETED`; aun así, la aplicación exige enrollment ACTIVE y confirmación posterior por GET. Antes del POST persiste snapshot, reserva y clave de idempotencia. Ante timeout conserva el mismo intento; después de 24 horas requiere revisión manual. El retorno del navegador no acredita compra.
 
-## Fuentes oficiales
+## Fuentes
 
-- https://aibuilders.mx/reap#apis
-- https://docs.reap.global/agentic-payments/setup
-- https://docs.reap.global/agentic-payments/one-time-purchases
-- https://docs.reap.global/api-reference/agentic/create-checkout
-- https://docs.reap.global/agentic-payments/lifecycle
-- https://docs.reap.global/api-reference/idempotency
+- [Setup y tarjetas de prueba](https://docs.reap.global/agentic-payments/setup)
+- [OpenAPI](https://docs.reap.global/api-reference/openapi.json)
+- [Create checkout](https://docs.reap.global/api-reference/agentic/create-checkout)
+- [Idempotencia](https://docs.reap.global/api-reference/idempotency)
+- [Evento](https://aibuilders.mx/reap#apis)

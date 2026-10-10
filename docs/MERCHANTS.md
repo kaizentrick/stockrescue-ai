@@ -1,19 +1,29 @@
-# Directorio de merchants: referencia, no catálogo validado
+# Producto de referencia de StockRescue
 
-Fuente aportada por Nahum y verificada por el conector de lectura del hilo padre: [All Supported Merchants](https://docs.google.com/spreadsheets/d/1pqb1Jlx1sycembPcjMZ4dxhwzVWXfK7k8RtfNMhb_cs/edit?gid=0#gid=0), A1:I153. 152 comercios; 29 de Electronics. Modificación de hoja: 2026-10-05 14:01:46 UTC.
+Fuente: [All Supported Merchants](https://docs.google.com/spreadsheets/d/1pqb1Jlx1sycembPcjMZ4dxhwzVWXfK7k8RtfNMhb_cs/edit?gid=0#gid=0), 152 filas de comercios. Se conserva la instantánea en [el anexo del Space](space/08-comercios-admitidos.md) y [su JSON](space/08-comercios-admitidos-fuente.json).
 
-| Fila | Dominio | Mercado | Envío explícito a MX | Producto de referencia | Variante de hoja (string) | Precio de referencia |
-|---|---|---|---|---|---|---|
-| 118 | satechi.net | US | Sí | USB-C Snap Hub - Citrus | 44267709005912 | 44.99 USD |
-| 37 | dockcase.com | HK | Sí | Dockcase Smart USB-C Hub 7-in-1 with M.2 SSD Enclosure - Black | 51181256933688 | 109.99 USD |
-| 5 | anker.com.sg | SG | No; solo MY/SG | Anker Nano USB-C Hub 8-in-1 Dual Display 85W A210B - Silver | 52786047254813 | 72.9 SGD |
+| Dato | Referencia |
+|---|---|
+| Fila | 20 |
+| Comercio | Blend Station · `blendstation.com.mx` |
+| Mercado y destino declarado | México · MX |
+| Producto | Cafe Guerrero Atoyac Bourbon Tipica Natural Fermentado |
+| Variante | 250 gr / Grano |
+| Variante de la hoja | `47607777984690` |
+| Precio de la hoja | $300 MXN, sin acreditar total con envío |
+| SKU local | `CAFE-250` |
+| Unidad de inventario y compra | Una bolsa de 250 g |
 
-**Nada de lo anterior acredita stock, habilitación de API, cotización final o compatibilidad de vídeo.** La hoja no contiene esas columnas ni merchant API ID. Los IDs de variante se conservan como texto y no se equiparan automáticamente a IDs de Reap. No se abrieron carritos. Sus enlaces incluyen `example_click_id`, que no debe reutilizarse como identificador real.
+El artículo analizado debe ser el mismo que se intenta cotizar y comprar. Precio e identificador de la hoja son referencias: no prueban stock, permisos, impuestos, envío o checkout completado. El ID Shopify no se convierte automáticamente en ID de catálogo de Reap.
 
-`src/merchant-directory.ts` conserva estos tres extractos con procedencia y hechos aún sin verificar. Los candidatos explícitos para destino México son Satechi y Dockcase; Anker SG es un caso de descarte por destino. `*` y `Unknown` no equivalen a envío universal.
+El adaptador configura identificadores de Reap y exige comprobar comercio, variante de 250 g en grano, MXN y disponibilidad mediante detalles de producto. Cotiza con la cantidad calculada. Si el subtotal no coincide con cantidad por precio unitario verificado, o existe otra discrepancia de contrato, bloquea compra. Estado de validación remota en [REAP-INTEGRATION.md](REAP-INTEGRATION.md).
 
-La UI sigue usando exclusivamente catálogo fixture y MXN sintéticos. La allowlist operativa real continúa vacía hasta validar IDs y respuesta API. No se incorporan precios de referencia a cotizaciones, no se hace conversión monetaria ni se afirma que un hub USB-C soporte el protocolo/resolución requeridos.
+La práctica usa el precio de referencia como fixture de $300 por bolsa y envío ficticio. Nunca sustituye `amountBreakdown.finalAmount` en sandbox. No hay conversión implícita de moneda ni compra de otro artículo para simular la solución del faltante.
 
-## Presupuestos independientes
+## Otros productos y antecedentes
 
-Las referencias 44.99 USD y 109.99 USD superan el escenario previo de 40 USD descrito en el Space, incluso antes de envío e impuestos: ese escenario debe rechazarse. La demo local usa explícitamente otro fixture: límite por puesto configurable (500 MXN por defecto), total ficticio 337.84 MXN y presupuesto global 1.000 MXN. No convierte los precios de hoja ni altera aprobaciones. Ningún presupuesto sintético autoriza gasto real.
+Vasos y filtros demuestran cobertura, paquetes, mínimos y capacidad. Tienen `supplier: none`: se calcula su necesidad y se explica que no puede ejecutarse su compra.
+
+Los candidatos previos de electrónica —Satechi, Dockcase y Anker— permanecen en históricos y `src/merchant-directory.ts`. No forman parte del caso de café ni de su allowlist. `*` y `Unknown` en destinos de la hoja no equivalen a envío universal.
+
+La lista no demuestra rentabilidad para reventa. El piloto comercial debe evaluar precio final, margen, disponibilidad y plazo real de entrega.

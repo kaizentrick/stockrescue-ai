@@ -1,312 +1,355 @@
-export type Port = {
-  connector: "HDMI" | "USB-C";
-  protocol: "HDMI" | "DP_ALT" | "DATA_ONLY" | "UNKNOWN";
-  maxHz4k: number;
-};
-export type Accessory = {
-  id: string;
+import { createHash } from "node:crypto";
+import { z } from "zod";
+import { Decimal } from "decimal.js";
+z.config(z.locales.es());
+export const COFFEE_NAME = "Café Guerrero Atoyac · 250 g en grano";
+export const productSchema = z
+  .object({
+    id: z.string().regex(/^[A-Za-z0-9_-]{1,40}$/),
+    name: z.string().trim().min(2).max(120),
+    unit: z.string().trim().min(1).max(24),
+    onHand: z.number().int().min(0).max(1_000_000),
+    reserved: z.number().int().min(0).max(1_000_000),
+    dailyDemand: z.number().min(0).max(100_000),
+    leadDays: z.number().int().min(1).max(365),
+    reviewDays: z.number().int().min(1).max(90),
+    safetyDays: z.number().int().min(0).max(90),
+    unitsPerPack: z.number().int().min(1).max(100_000),
+    minPacks: z.number().int().min(1).max(1000),
+    maxStock: z.number().int().min(1).max(1_000_000),
+    budget: z.number().int().min(0).max(10_000_000),
+    supplier: z.enum(["blendstation", "none"]),
+    revision: z.number().int().min(1).default(1),
+  })
+  .refine((p) => p.reserved <= p.onHand, {
+    message: "Lo reservado no puede superar las existencias.",
+    path: ["reserved"],
+  });
+export type Product = z.infer<typeof productSchema>;
+export const addressSchema = z.object({
+  firstName: z.string().trim().min(1).max(60),
+  lastName: z.string().trim().min(1).max(60),
+  phone: z.string().regex(/^\+[1-9]\d{6,14}$/),
+  addressLine1: z.string().trim().min(3).max(160),
+  city: z.string().trim().min(2).max(80),
+  region: z.string().trim().min(2).max(80),
+  postalCode: z.string().regex(/^\d{5}$/),
+  country: z.literal("MX"),
+});
+export type Address = z.infer<typeof addressSchema>;
+export type Settings = {
   name: string;
-  input: "USB-C";
-  output: "HDMI";
-  protocol: "DP_ALT";
-  maxHz4k: number;
-  assignedTo?: string;
+  budget: number;
+  email: string;
+  address: Address;
+  revision: number;
 };
-export type Workplace = {
-  id: string;
-  name: string;
-  laptop: string;
-  monitor: string;
-  outputs: Port[];
-  inputs: Port[];
-  cable: string;
-  cableSpec?: {
-    input: "HDMI" | "USB-C";
-    output: "HDMI" | "USB-C";
-    protocol: "HDMI" | "DATA_ONLY" | "UNKNOWN";
-    maxHz4k: number;
-  };
-  requiredHz4k: number;
+export type Analysis = {
+  available: number;
+  incoming: number;
+  timelyIncoming: number;
+  lateIncoming: number;
+  position: number;
+  coverageDays: number | null;
+  reorderPoint: number;
+  target: number;
+  purchaseQuantity: number;
+  inventoryQuantity: number;
+  gapDays: number;
+  status: "REORDER" | "ENOUGH" | "NO_DEMAND" | "INCOMING" | "CAPACITY";
+  reason: string;
 };
-export type Diagnosis = {
-  decision: "NO_PURCHASE" | "BUY" | "NEEDS_INFO";
-  title: string;
-  reasons: string[];
-  alternatives: { name: string; result: string }[];
-  accessoryId?: string;
-};
-export type Product = Accessory & {
-  merchant: string;
-  price: number;
-  shipping: number;
-  tax: number;
-  available: boolean;
-  fixture: true;
-};
+export type Money = { amount: number; currency: string };
 export type Quote = {
   id: string;
-  evidenceHash: string;
-  workplaceId: string;
-  variantId: string;
   product: string;
   merchant: string;
+  variantId: string;
   quantity: number;
+  inventoryQuantity: number;
+  unitsPerPack: number;
+  verifiedUnitPrice?: number;
+  source?: "catalog";
   subtotal: number;
-  shipping: number;
-  tax: number;
+  shipping: number | null;
+  tax: number | null;
+  taxIncluded: boolean | null;
+  discounts: number;
+  additionalCharges: number;
   total: number;
   currency: "MXN";
-  delivery: string;
-  destination: string;
   expiresAt: string;
-  fixture: true;
+  shippingOptions: {
+    id: string;
+    name: string;
+    price: number;
+    selected: boolean;
+  }[];
+  destination: Address;
+  evidenceHash: string;
+  fixture: boolean;
 };
-export type Audit = { at: string; event: string; detail: string };
 export type Operation = {
   key: string;
   createdAt: string;
-  mockOutcome?: "completed" | "timeout" | "failed" | "expired";
-  quote: Quote;
-  status: "PENDING" | "COMPLETED" | "FAILED" | "EXPIRED";
   checkoutId?: string;
   orderId?: string;
-  finalAmount?: number;
+  status:
+    | "PENDING"
+    | "REQUIRES_ACTION"
+    | "PROCESSING"
+    | "COMPLETED"
+    | "FAILED"
+    | "EXPIRED";
+  quote: Quote;
+  enrollmentId: string;
   note: string;
+  nextAction?: string;
+  finalAmount?: number;
+  amountMismatch?: boolean;
 };
-export type Case = {
+export type Proposal = {
   id: string;
-  workplace: Workplace;
-  scenario: "normal" | "unknown";
-  budget: number;
-  diagnosis?: Diagnosis;
+  productId: string;
+  analysis: Analysis;
+  product: Product;
+  evidenceHash: string;
+  state: "DRAFT" | "QUOTING" | "QUOTED" | "APPROVED" | "ORDERED" | "CANCELED";
+  createdAt: string;
   quote?: Quote;
-  approval?: { hash: string; at: string; by: string };
-  canceled: boolean;
+  approval?: { hash: string; at: string };
   operation?: Operation;
-  attempts?: Operation[];
-  quoteHistory?: Quote[];
-  approvalHistory?: { hash: string; at: string; by: string }[];
-  audit: Audit[];
+  request?: {
+    key: string;
+    kind: "quote" | "shipping";
+    body: unknown;
+    at: string;
+  };
+  error?: string;
+  audit: { at: string; event: string; detail: string }[];
 };
-export const workplaces: Workplace[] = [
-  {
-    id: "P-01",
-    name: "Administración",
-    laptop: "Fixture L1 · HDMI 2.0",
-    monitor: "Fixture M1 · HDMI 2.0",
-    outputs: [
-      { connector: "HDMI", protocol: "HDMI", maxHz4k: 60 },
-      { connector: "USB-C", protocol: "DATA_ONLY", maxHz4k: 0 },
-    ],
-    inputs: [{ connector: "HDMI", protocol: "HDMI", maxHz4k: 60 }],
-    cable: "HDMI 2.0 · 4K/60 Hz",
-    cableSpec: { input: "HDMI", output: "HDMI", protocol: "HDMI", maxHz4k: 60 },
-    requiredHz4k: 60,
-  },
-  {
-    id: "P-02",
-    name: "Operaciones",
-    laptop: "Fixture L2 · USB-C con DP Alt",
-    monitor: "Fixture M2 · HDMI 2.0",
-    outputs: [{ connector: "USB-C", protocol: "DP_ALT", maxHz4k: 60 }],
-    inputs: [{ connector: "HDMI", protocol: "HDMI", maxHz4k: 60 }],
-    cable: "HDMI 2.0 · 4K/60 Hz",
-    cableSpec: { input: "HDMI", output: "HDMI", protocol: "HDMI", maxHz4k: 60 },
-    requiredHz4k: 60,
-  },
-  {
-    id: "P-03",
-    name: "Diseño",
-    laptop: "Fixture L3 · USB-C con DP Alt",
-    monitor: "Fixture M3 · HDMI 2.0",
-    outputs: [{ connector: "USB-C", protocol: "DP_ALT", maxHz4k: 60 }],
-    inputs: [{ connector: "HDMI", protocol: "HDMI", maxHz4k: 60 }],
-    cable: "HDMI 2.0 · 4K/60 Hz",
-    cableSpec: { input: "HDMI", output: "HDMI", protocol: "HDMI", maxHz4k: 60 },
-    requiredHz4k: 60,
-  },
-];
-export const accessories: Accessory[] = [
-  {
-    id: "A-01",
-    name: "Adaptador existente · 4K/60 Hz",
-    input: "USB-C",
-    output: "HDMI",
-    protocol: "DP_ALT",
-    maxHz4k: 60,
-    assignedTo: "P-02",
-  },
-  {
-    id: "A-02",
-    name: "Adaptador libre · 4K/30 Hz",
-    input: "USB-C",
-    output: "HDMI",
-    protocol: "DP_ALT",
-    maxHz4k: 30,
-  },
-];
-export const catalog: Product[] = [
-  {
-    id: "FIX-ADAPTER-60",
-    name: "Adaptador USB-C DP Alt a HDMI · 4K/60 Hz",
-    input: "USB-C",
-    output: "HDMI",
-    protocol: "DP_ALT",
-    maxHz4k: 60,
-    merchant: "fixture-office",
-    price: 24900,
-    shipping: 4900,
-    tax: 3984,
-    available: true,
-    fixture: true,
-  },
-  {
-    id: "FIX-CABLE-60",
-    name: "Cable directo USB-C DP Alt a HDMI · 4K/60 Hz",
-    input: "USB-C",
-    output: "HDMI",
-    protocol: "DP_ALT",
-    maxHz4k: 60,
-    merchant: "fixture-office",
-    price: 32900,
-    shipping: 4900,
-    tax: 5264,
-    available: true,
-    fixture: true,
-  },
-  {
-    id: "FIX-ADAPTER-30",
-    name: "Adaptador USB-C a HDMI · 4K/30 Hz",
-    input: "USB-C",
-    output: "HDMI",
-    protocol: "DP_ALT",
-    maxHz4k: 30,
-    merchant: "fixture-office",
-    price: 9900,
-    shipping: 4900,
-    tax: 1584,
-    available: true,
-    fixture: true,
-  },
-];
-export function usableHdmiCable(w: Workplace): boolean {
-  const cable = w.cableSpec;
-  return (
-    !!cable &&
-    cable.input === "HDMI" &&
-    cable.output === "HDMI" &&
-    cable.protocol === "HDMI" &&
-    cable.maxHz4k >= w.requiredHz4k
-  );
+export type Incoming = {
+  id: string;
+  proposalId: string;
+  productId: string;
+  quantity: number;
+  received: number;
+  eta: string;
+  orderId: string;
+  createdAt: string;
+  fixture: boolean;
+};
+export type State = {
+  settings: Settings;
+  products: Product[];
+  proposals: Proposal[];
+  incoming: Incoming[];
+  receipts: { key: string; incomingId: string; quantity: number; at: string }[];
+  enrollment?: {
+    id?: string;
+    key: string;
+    status: string;
+    nextAction?: string;
+    createdAt: string;
+    ownerEmail: string;
+    ownerReference?: string;
+  };
+};
+export const digest = (v: unknown) =>
+  createHash("sha256").update(JSON.stringify(v)).digest("hex");
+export const evidenceHash = (
+  p: Product,
+  settings: Settings,
+  incoming: Incoming[],
+) =>
+  digest({
+    version: "stockrescue-minmax-1",
+    p,
+    settings,
+    incoming: incoming
+      .filter((x) => x.productId === p.id)
+      .map((x) => ({
+        id: x.id,
+        quantity: x.quantity,
+        received: x.received,
+        eta: x.eta,
+      })),
+  });
+export function cents(amount: number | string): number {
+  const d = new Decimal(amount).times(100);
+  if (
+    !d.isFinite() ||
+    !d.isInteger() ||
+    d.isNegative() ||
+    d.gt(Number.MAX_SAFE_INTEGER)
+  )
+    throw new Error("Importe inválido del proveedor.");
+  return d.toNumber();
 }
-export function compatible(w: Workplace, a: Accessory): boolean {
-  return (
-    w.outputs.some(
-      (p) =>
-        p.connector === a.input &&
-        p.protocol === a.protocol &&
-        p.maxHz4k >= w.requiredHz4k,
-    ) &&
-    w.inputs.some(
-      (p) =>
-        p.connector === a.output &&
-        p.protocol === "HDMI" &&
-        p.maxHz4k >= w.requiredHz4k,
-    ) &&
-    a.maxHz4k >= w.requiredHz4k &&
-    usableHdmiCable(w)
-  );
+function projectedGap(
+  available: number,
+  demand: number,
+  leadDays: number,
+  open: Incoming[],
+  now: number,
+) {
+  if (!demand) return 0;
+  const end = now + leadDays * 86400000;
+  let stock = available,
+    at = now,
+    gap = 0;
+  for (const order of open
+    .filter((i) => Date.parse(i.eta) >= now && Date.parse(i.eta) <= end)
+    .sort((a, b) => Date.parse(a.eta) - Date.parse(b.eta))) {
+    const days = (Date.parse(order.eta) - at) / 86400000;
+    gap += Math.max(0, days - stock / demand);
+    stock =
+      Math.max(0, stock - days * demand) + order.quantity - order.received;
+    at = Date.parse(order.eta);
+  }
+  return gap + Math.max(0, (end - at) / 86400000 - stock / demand);
 }
-export function diagnose(w: Workplace): Diagnosis {
-  const direct =
-    w.outputs.some(
-      (p) => p.protocol === "HDMI" && p.maxHz4k >= w.requiredHz4k,
-    ) &&
-    w.inputs.some(
-      (p) => p.protocol === "HDMI" && p.maxHz4k >= w.requiredHz4k,
-    ) &&
-    usableHdmiCable(w);
-  const alternatives = [
-    {
-      name: "Conexión directa con cable existente",
-      result: direct
-        ? "Compatible: HDMI 2.0 a HDMI 2.0; 4K/60 Hz."
-        : "No hay una ruta HDMI directa completa que alcance la capacidad requerida.",
-    },
-    ...accessories.map((a) => ({
-      name: a.id + " · " + a.name,
-      result:
-        a.assignedTo && a.assignedTo !== w.id
-          ? "Asignado a otro puesto; no se retira."
-          : compatible(w, a)
-            ? "Compatible con los puertos y 4K/60 Hz."
-            : "Incompatible o no verificable: no alcanza la capacidad requerida.",
-    })),
-  ];
-  if (direct)
-    return {
-      decision: "NO_PURCHASE",
-      title: "No hace falta comprar",
-      reasons: [
-        "Conecta el cable HDMI existente directamente. Verifica imagen y frecuencia en el puesto.",
-      ],
-      alternatives,
-    };
-  if (w.outputs.some((p) => p.protocol === "UNKNOWN") || !usableHdmiCable(w))
-    return {
-      decision: "NEEDS_INFO",
-      title: "Falta información para decidir",
-      reasons: [
-        "Verifica salida de vídeo, protocolo y cable: conectores HDMI en ambos extremos y capacidad 4K/60 Hz. Para USB-C confirma DisplayPort Alt Mode; la forma del conector no prueba vídeo. Si el cable es incompatible, documenta una ruta completa alternativa antes de cotizar.",
-      ],
-      alternatives,
-    };
-  const reusable = accessories.find(
-    (a) => (!a.assignedTo || a.assignedTo === w.id) && compatible(w, a),
-  );
-  if (reusable)
-    return {
-      decision: "NO_PURCHASE",
-      title: "No hace falta comprar",
-      reasons: [
-        `Reutiliza ${reusable.id}, disponible para este puesto, con el cable HDMI existente.`,
-      ],
-      alternatives,
-      accessoryId: reusable.id,
-    };
-  if (!catalog.some((p) => compatible(w, p)))
-    return {
-      decision: "NEEDS_INFO",
-      title: "No hay ruta compatible verificada",
-      reasons: [
-        "Documenta una salida de vídeo compatible antes de buscar un componente.",
-      ],
-      alternatives,
-    };
+export function analyze(
+  p: Product,
+  incoming: Incoming[],
+  now = Date.now(),
+): Analysis {
+  productSchema.parse(p);
+  const available = p.onHand - p.reserved,
+    open = incoming.filter(
+      (i) => i.productId === p.id && i.received < i.quantity,
+    );
+  const total = open.reduce((n, i) => n + i.quantity - i.received, 0);
+  const timely = open
+    .filter(
+      (i) =>
+        Date.parse(i.eta) >= now &&
+        Date.parse(i.eta) <= now + p.leadDays * 86400000,
+    )
+    .reduce((n, i) => n + i.quantity - i.received, 0);
+  const position = available + total,
+    reorderPoint = new Decimal(p.dailyDemand)
+      .mul(p.leadDays + p.safetyDays)
+      .toNumber(),
+    target = new Decimal(p.dailyDemand)
+      .mul(p.leadDays + p.reviewDays + p.safetyDays)
+      .ceil()
+      .toNumber();
+  const coverageDays = p.dailyDemand > 0 ? available / p.dailyDemand : null,
+    gapDays = projectedGap(available, p.dailyDemand, p.leadDays, open, now);
+  let purchaseQuantity =
+    p.dailyDemand > 0 && position <= reorderPoint
+      ? Math.max(
+          p.minPacks,
+          Math.ceil(Math.max(0, target - position) / p.unitsPerPack),
+        )
+      : 0;
+  if (target <= position) purchaseQuantity = 0;
+  let status: Analysis["status"] =
+    p.dailyDemand === 0
+      ? "NO_DEMAND"
+      : purchaseQuantity
+        ? "REORDER"
+        : total
+          ? "INCOMING"
+          : "ENOUGH";
+  if (
+    purchaseQuantity &&
+    p.onHand + total + purchaseQuantity * p.unitsPerPack > p.maxStock
+  ) {
+    status = "CAPACITY";
+    purchaseQuantity = 0;
+  }
+  const reasons = {
+    REORDER: `La posición de inventario (${position}) está en el punto de reposición (${reorderPoint}) o por debajo.`,
+    ENOUGH:
+      "La posición de inventario cubre el punto de reposición; no hace falta comprar.",
+    NO_DEMAND: "Sin consumo registrado. No se genera una compra automática.",
+    INCOMING:
+      "Ya hay mercancía comprometida. Revisa su llegada antes de comprar más.",
+    CAPACITY:
+      "El empaque mínimo supera la capacidad disponible. Ajusta la capacidad o revisa al proveedor.",
+  };
   return {
-    decision: "BUY",
-    title: "Se necesita un componente compatible",
-    reasons: [
-      "A-01 permanece en P-02; A-02 solo alcanza 4K/30 Hz. El puesto requiere 4K/60 Hz.",
-      "La compra mínima es un adaptador; un cable directo USB-C a HDMI también funciona, con mayor total en este fixture.",
-    ],
-    alternatives,
+    available,
+    incoming: total,
+    timelyIncoming: timely,
+    lateIncoming: total - timely,
+    position,
+    coverageDays,
+    reorderPoint,
+    target,
+    purchaseQuantity,
+    inventoryQuantity: purchaseQuantity * p.unitsPerPack,
+    gapDays,
+    status,
+    reason: reasons[status],
   };
 }
-export function selectProduct(
-  w: Workplace,
-  products: Product[] = catalog,
-): Product {
-  const sorted = products
-    .filter(
-      (p) => p.merchant === "fixture-office" && p.available && compatible(w, p),
-    )
-    .sort(
-      (a, b) =>
-        a.price + a.shipping + a.tax - (b.price + b.shipping + b.tax) ||
-        a.id.localeCompare(b.id),
-    );
-  if (!sorted[0])
-    throw new Error("No hay variante compatible en un proveedor admitido.");
-  return sorted[0];
+export function initialState(): State {
+  const base = {
+    unit: "bolsas",
+    reserved: 0,
+    leadDays: 3,
+    reviewDays: 2,
+    safetyDays: 1,
+    unitsPerPack: 1,
+    minPacks: 1,
+    maxStock: 40,
+    budget: 300000,
+    revision: 1,
+  };
+  return {
+    settings: {
+      name: "Mi tienda · ejemplo",
+      budget: 500000,
+      email: "stockrescue@example.com",
+      revision: 1,
+      address: {
+        firstName: "Demo",
+        lastName: "StockRescue",
+        phone: "+525555550100",
+        addressLine1: "Luis G. Urbina 4",
+        city: "Miguel Hidalgo",
+        region: "Ciudad de México",
+        postalCode: "11560",
+        country: "MX",
+      },
+    },
+    products: [
+      {
+        ...base,
+        id: "CAFE-250",
+        name: COFFEE_NAME,
+        onHand: 2,
+        dailyDemand: 0.5,
+        supplier: "blendstation",
+      },
+      {
+        ...base,
+        id: "VASO-12",
+        name: "Vasos de papel · paquete de 12",
+        unit: "piezas",
+        onHand: 72,
+        dailyDemand: 6,
+        unitsPerPack: 12,
+        maxStock: 180,
+        supplier: "none",
+      },
+      {
+        ...base,
+        id: "FILTRO-40",
+        name: "Filtros para café · paquete de 40",
+        unit: "piezas",
+        onHand: 8,
+        dailyDemand: 4,
+        unitsPerPack: 40,
+        maxStock: 120,
+        supplier: "none",
+      },
+    ],
+    proposals: [],
+    incoming: [],
+    receipts: [],
+  };
 }

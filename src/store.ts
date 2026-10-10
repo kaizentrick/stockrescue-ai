@@ -1,37 +1,36 @@
 import { DatabaseSync } from "node:sqlite";
-import type { Case } from "./domain.ts";
+import { initialState, type State } from "./domain.ts";
 export class Store {
   db: DatabaseSync;
   constructor(path = ":memory:") {
     this.db = new DatabaseSync(path);
     this.db.exec(
-      "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS cases (id TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS mock_orders (key TEXT PRIMARY KEY, data TEXT NOT NULL);",
+      "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS stockrescue_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS mock_orders (key TEXT PRIMARY KEY, data TEXT NOT NULL);",
     );
-  }
-  get(id: string): Case {
-    const row = this.db.prepare("SELECT data FROM cases WHERE id=?").get(id) as
-      { data: string } | undefined;
-    if (!row) throw new Error("Expediente no encontrado.");
-    return JSON.parse(row.data) as Case;
-  }
-  all(): Case[] {
-    return (
-      this.db.prepare("SELECT data FROM cases ORDER BY rowid DESC").all() as {
-        data: string;
-      }[]
-    ).map((r) => JSON.parse(r.data) as Case);
-  }
-  save(c: Case) {
     this.db
-      .prepare(
-        "INSERT INTO cases VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data",
-      )
-      .run(c.id, JSON.stringify(c));
+      .prepare("INSERT OR IGNORE INTO stockrescue_state VALUES (1, ?)")
+      .run(JSON.stringify(initialState()));
   }
-  transaction<T>(fn: () => T): T {
+  read(): State {
+    return JSON.parse(
+      (
+        this.db
+          .prepare("SELECT data FROM stockrescue_state WHERE id=1")
+          .get() as { data: string }
+      ).data,
+    ) as State;
+  }
+  save(s: State) {
+    this.db
+      .prepare("UPDATE stockrescue_state SET data=? WHERE id=1")
+      .run(JSON.stringify(s));
+  }
+  transaction<T>(fn: (s: State) => T): T {
     this.db.exec("BEGIN IMMEDIATE");
     try {
-      const result = fn();
+      const s = this.read();
+      const result = fn(s);
+      this.save(s);
       this.db.exec("COMMIT");
       return result;
     } catch (e) {
