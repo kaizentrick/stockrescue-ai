@@ -1,0 +1,44 @@
+{
+  "name": "stockrescue-ai",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.ts",
+    "start": "node src/server.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src public tests",
+    "test": "node --test tests/*.test.ts",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "test:ui": "playwright test",
+    "sandbox": "node src/start-sandbox.ts",
+    "agent:check": "node --env-file-if-exists=.env.agent src/agent/check.ts",
+    "agent:start": "node --env-file-if-exists=.env.agent src/agent/start.ts",
+    "agent:dev": "node --env-file-if-exists=.env.agent --watch src/agent/start.ts",
+    "agent:sandbox": "node --env-file-if-exists=.env.agent src/start-sandbox.ts --agent",
+    "agent:alerts": "node --env-file-if-exists=.env.agent src/agent/alerts.ts",
+    "demo": "node src/demo.ts",
+    "demo:public": "node src/demo.ts --tunnel",
+    "mvp": "node src/launch.ts",
+    "mvp:public": "node src/launch.ts --tunnel",
+    "service": "node src/control.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "^24.0.0",
+    "@types/papaparse": "5.5.2",
+    "eslint": "^9.39.0",
+    "prettier": "^3.9.9",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0",
+    "papaparse": "5.7.0",
+    "zod": "4.6.5"
+  }
+}

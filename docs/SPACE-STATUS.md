@@ -1,9 +1,19 @@
-# Estado posterior a la exportación
+# Transición a StockRescue
 
-El paquete de `docs/space/` se conserva sin modificar. SHA256SUMS valida sus 12 archivos de contenido (el listado no se incluye a sí mismo). Exportación recibida como `reap-space-export-2026-10-10.zip`: 63.636 bytes, SHA-256 `5532fb25d0191dba0937d293ad2b11c2b71a9f54b1b8b29bf6d2363de6dc405a`.
+El alcance actual es **reposición supervisada de inventario**, descrito en [README.md](../README.md). Se reutilizan persistencia, aprobación vinculada a evidencia, presupuesto e idempotencia de Reap Workplace Agent; se reemplaza el caso de pantallas y accesorios por una tienda, inventario, propuestas y recepción.
 
-Las páginas diferencian ideas elegidas, ajustes recomendados, hipótesis y planes. El código desarrollado posteriormente implementa el contrato delegado de diagnóstico de un puesto bloqueado, con alternativas de conexión directa/reutilización y compra mock condicionada. Ese estado de código se revisa en el PR, no se atribuye retrospectivamente al contenido original del Space.
+La implementación se desarrolla en `cx/stockrescue-mvp`. El caso principal es café Blend Station de la lista del evento; vasos y filtros usan el mismo motor con ejecución bloqueada por ausencia de proveedor. El código incluye práctica y adaptador sandbox. Se verificaron catálogo, cotización de una bolsa, enrollment ACTIVE y autorización del checkout simulado. Reap mantiene ese checkout en PROCESSING: todavía no hay confirmación COMPLETED. Evidencia remota y siguiente consulta están en [REAP-INTEGRATION.md](REAP-INTEGRATION.md), separados de la existencia del código.
 
-Implementación: [PR #1 en borrador](https://github.com/kaizentrick/reap-workplace-agent/pull/1), rama `feat/local-mvp`. No se fusionó en main. No hay checkout Reap real ni validación de demanda pagadora.
+## Históricos
 
-La hoja de merchants es fuente de descubrimiento. Precio, variante y destino de referencia no acreditan cotización final, stock, habilitación API ni compatibilidad. Los escenarios de presupuesto originales permanecen como antecedentes; cualquier fixture de implementación usa sus propios importes rotulados y nunca autoriza gasto real.
+`docs/space/`, `docs/pitch/` y `docs/reviews/` se conservan sin modificar. Registran investigación, hipótesis, presentación y revisiones de equipamiento. Sus títulos, estados, fechas e importes no se atribuyen retroactivamente a StockRescue.
+
+`docs/space/SHA256SUMS` valida sus 12 archivos de contenido; el listado no se incluye a sí mismo. Exportación recibida como `reap-space-export-2026-10-10.zip`: 63.636 bytes, SHA-256 `5532fb25d0191dba0937d293ad2b11c2b71a9f54b1b8b29bf6d2363de6dc405a`.
+
+Este archivo actualiza el contexto del repositorio; no implica cambios en páginas externas del Space. La hoja de merchants es fuente de descubrimiento. Producto, precio y destino de referencia no acreditan una transacción actual.
+
+## Lectura vigente
+
+Usar README, ARCHITECTURE, DESIGN, DEMO-SCRIPT, MERCHANTS y TASKS para desarrollar y demostrar StockRescue. Consultar QA para pruebas e integración para evidencia del proveedor. Los materiales de equipamiento son antecedentes, no la presentación vigente.
+
+Demanda pagadora, ahorro, prevención de faltantes y rentabilidad requieren validación comercial; la demo técnica no los demuestra.

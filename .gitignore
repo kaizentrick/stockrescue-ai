@@ -3,6 +3,9 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.agent.example
+*.sqlite.alerts
+*.sqlite.alerts-*
 *.sqlite
 *.sqlite-*
 .data/
@@ -11,3 +14,5 @@ artifacts/
 .DS_Store
 *.pem
 *.key
+
+.tmp/
