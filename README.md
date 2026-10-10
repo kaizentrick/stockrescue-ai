@@ -4,7 +4,7 @@
 
 El MVP reutiliza persistencia, aprobaciones e idempotencia del prototipo Reap Workplace Agent. Su caso principal es reponer **Café Guerrero Atoyac de Blend Station, bolsa de 250 g en grano**, incluido en la lista de comercios del evento. Vasos y filtros permiten explorar el mismo cálculo, pero no tienen proveedor habilitado para comprar.
 
-**Estado:** práctica local funcional y conexión autenticada al sandbox de Reap. Se verificaron catálogo, variante y una cotización de una bolsa por $360 MXN ($300 de producto y $60 de envío). Esa cotización es evidencia histórica, no un precio garantizado vigente. **La compra remota sigue bloqueada:** el enrollment requiere acción y la página hospedada falla antes de introducir la tarjeta de prueba; no hay enrollment activo ni checkout confirmado. Ver [integración Reap](docs/REAP-INTEGRATION.md) y [validación](docs/QA.md). Producción está bloqueada; existencias, consumo y dirección inicial son ejemplos.
+**Estado:** práctica local funcional y conexión autenticada al sandbox de Reap. El nuevo enrollment llegó a **ACTIVE** con tarjeta oficial de prueba, OTP y passkey en Safari. Se obtuvo y aprobó una cotización de una bolsa por **$360 MXN** ($300 de producto y $60 de envío); el checkout simulado se autorizó y continúa **PROCESSING**, con referencia de pedido y sin acciones pendientes. Todavía no se declara COMPLETED. Los importes son evidencia de esa prueba, no precios futuros garantizados. Ver [integración Reap](docs/REAP-INTEGRATION.md) y [validación](docs/QA.md). Producción está bloqueada; existencias, consumo y dirección inicial son ejemplos.
 
 ## Ejecutar
 
@@ -21,7 +21,7 @@ Abrir [StockRescue local](http://127.0.0.1:4317). Sin configuración adicional s
 
 Los datos se guardan en `.data/stockrescue-mock.sqlite`; sandbox usa una base separada, `.data/stockrescue-sandbox.sqlite`. Ambas están excluidas de Git. El servidor escucha en `127.0.0.1`. El MVP es de un operador local, sin autenticación multiusuario: no publicarlo como servicio abierto.
 
-Para abrir el entorno conectado, usar `npm run sandbox` con 1Password CLI (`op`) y la bóveda desbloqueada. El lanzador lee el campo secreto `credential` del elemento `StockRescue Reap sandbox`, sin imprimirlo ni crear un archivo de secretos. Ver configuración, caducidad de la llave y bloqueo vigente en [integración Reap](docs/REAP-INTEGRATION.md).
+Para abrir el entorno conectado, usar `npm run sandbox` con 1Password CLI (`op`) y la bóveda desbloqueada. El lanzador lee el campo secreto `credential` del elemento `StockRescue Reap sandbox`, sin imprimirlo ni crear un archivo de secretos. Ver configuración, caducidad de la llave y resultado del último intento en [integración Reap](docs/REAP-INTEGRATION.md).
 
 ## Primer recorrido
 
