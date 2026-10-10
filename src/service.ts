@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { diagnose, workplaces, type Case, type Quote } from "./domain.ts";
-import { MockAdapter, type MockOutcome } from "./mock.ts";
+import { MockAdapter, evidenceHash, type MockOutcome } from "./mock.ts";
 import { Store } from "./store.ts";
 export const snapshot = (q: Quote) =>
   createHash("sha256").update(JSON.stringify(q)).digest("hex");
@@ -80,6 +80,8 @@ export class Service {
         throw new Error(
           "No se puede recotizar un intento enviado o cancelado.",
         );
+      if (!c.diagnosis) throw new Error("Diagnóstico requerido.");
+      c.diagnosis = diagnose(c.workplace);
       if (c.diagnosis?.decision !== "BUY")
         throw new Error("El diagnóstico no autoriza buscar una compra.");
       if (c.quote) (c.quoteHistory ??= []).push(c.quote);
@@ -99,6 +101,13 @@ export class Service {
       if (!c.quote || snapshot(c.quote) !== hash)
         throw new Error(
           "La cotización cambió. Revisa y aprueba el snapshot actual.",
+        );
+      if (
+        !c.diagnosis ||
+        c.quote.evidenceHash !== evidenceHash(c.workplace, c.diagnosis)
+      )
+        throw new Error(
+          "La evidencia del diagnóstico cambió. Diagnostica y cotiza otra vez.",
         );
       if (Date.parse(c.quote.expiresAt) <= this.now())
         throw new Error("La cotización venció. Solicita otra.");
@@ -165,6 +174,13 @@ export class Service {
         snapshot(c.quote) !== c.approval.hash
       )
         throw new Error("Hace falta aprobación válida para esta cotización.");
+      if (
+        !c.diagnosis ||
+        c.quote.evidenceHash !== evidenceHash(c.workplace, c.diagnosis)
+      )
+        throw new Error(
+          "La evidencia del diagnóstico cambió. Diagnostica y cotiza otra vez.",
+        );
       if (Date.parse(c.quote.expiresAt) <= this.now())
         throw new Error("Cotización vencida: vuelve a cotizar y aprobar.");
       const committed = this.store
@@ -269,7 +285,11 @@ export class Service {
       ...c,
       quoteHash: c.quote ? snapshot(c.quote) : undefined,
       approvalValid:
-        quoteValid && !!c.approval && c.approval.hash === snapshot(c.quote!),
+        quoteValid &&
+        !!c.approval &&
+        !!c.diagnosis &&
+        c.quote!.evidenceHash === evidenceHash(c.workplace, c.diagnosis) &&
+        c.approval.hash === snapshot(c.quote!),
       incidentStatus: "OPEN_INSTALLATION_PENDING",
       mode: "LOCAL_SIMULATION",
     };

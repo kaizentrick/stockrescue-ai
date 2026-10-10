@@ -231,3 +231,13 @@ test("unknown or insufficient cable cannot establish a compatible video chain", 
   delete charging.cableSpec;
   assert.equal(diagnose(charging).decision, "NEEDS_INFO");
 });
+test("approval includes diagnostic evidence and rejects changed hardware before checkout", async () => {
+  const s = setup(),
+    id = ready(s);
+  s.change(id, (c) => {
+    c.workplace.cableSpec!.maxHz4k = 30;
+  });
+  assert.equal(s.view(s.store.get(id)).approvalValid, false);
+  await assert.rejects(s.checkout(id), /evidencia/);
+  assert.equal(s.adapter.calls, 0);
+});

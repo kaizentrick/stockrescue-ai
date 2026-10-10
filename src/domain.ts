@@ -45,6 +45,7 @@ export type Product = Accessory & {
 };
 export type Quote = {
   id: string;
+  evidenceHash: string;
   workplaceId: string;
   variantId: string;
   product: string;

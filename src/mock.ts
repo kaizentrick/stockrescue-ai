@@ -1,12 +1,23 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   selectProduct,
+  diagnose,
+  type Diagnosis,
   type Quote,
   type Workplace,
   type Operation,
 } from "./domain.ts";
 import type { Store } from "./store.ts";
 export type MockOutcome = "completed" | "timeout" | "failed" | "expired";
+export const evidenceHash = (
+  workplace: Workplace,
+  diagnosis: Diagnosis = diagnose(workplace),
+) =>
+  createHash("sha256")
+    .update(
+      JSON.stringify({ rulesVersion: "fixture-v2", workplace, diagnosis }),
+    )
+    .digest("hex");
 export class MockAdapter {
   store: Store;
   calls = 0;
@@ -17,6 +28,7 @@ export class MockAdapter {
     const p = selectProduct(w);
     return {
       id: "quote_" + randomUUID(),
+      evidenceHash: evidenceHash(w),
       workplaceId: w.id,
       variantId: p.id,
       product: p.name,
