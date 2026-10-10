@@ -290,3 +290,66 @@ test("quote remains within a narrow viewport when text sizes are doubled", async
   expect(bounds?.x).toBeGreaterThanOrEqual(0);
   expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(321);
 });
+
+test("mobile operational panels share movements, document review and simulations", async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Movimientos", exact: true }).click();
+  await page
+    .locator("#movement-form [name=productId]")
+    .selectOption("CAFE-250");
+  await page.locator("#movement-form [name=quantity]").fill("1");
+  await page
+    .locator("#movement-form [name=note]")
+    .fill("Venta de prueba de interfaz");
+  await page
+    .getByRole("button", { name: "Revisar movimiento", exact: true })
+    .click();
+  await expect(page.locator("#action-dialog")).toContainText(
+    "Venta · CAFE-250",
+  );
+  await page
+    .getByRole("button", { name: "Confirmar acción", exact: true })
+    .click();
+  await expect(page.locator("#movement-list")).toContainText(
+    "Venta de prueba de interfaz",
+  );
+  expect((await snapshot(request)).products[0].onHand).toBe(1);
+  await page.getByRole("button", { name: "Documentos", exact: true }).click();
+  await page
+    .locator("#document-upload input")
+    .setInputFiles({
+      name: "receipt.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4\nSynthetic test fixture"),
+    });
+  await page
+    .getByRole("button", { name: "Leer con Gemini", exact: true })
+    .click();
+  await expect(page.locator("#document-list")).toContainText("UI-1");
+  await page
+    .getByRole("button", { name: "Revisar confirmación", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Confirmar acción", exact: true })
+    .click();
+  await expect(page.locator("#document-list")).toContainText(
+    "Documento confirmado",
+  );
+  expect((await snapshot(request)).products[0].onHand).toBe(2);
+  await page.getByRole("button", { name: "Simulaciones", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Simular escenario", exact: true })
+    .click();
+  await expect(page.locator("#simulation-result")).toContainText(
+    "Resultado simulado",
+  );
+  expect((await snapshot(request)).products[0].onHand).toBe(2);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+});

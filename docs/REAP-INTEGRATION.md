@@ -36,7 +36,7 @@ npm run sandbox
 
 Requiere 1Password CLI (`op`) con la bóveda desbloqueada y un elemento **StockRescue Reap sandbox**, campo secreto **credential**. Un selector diferente puede indicarse mediante `REAP_VAULT_ITEM`. El lanzador captura la credencial por pipe y la pasa únicamente al entorno del proceso hijo. No imprime el valor ni crea archivos de secretos. La credencial del evento vence al comenzar el **11 de octubre de 2026, 00:00 CDMX**.
 
-La app escucha solo en `127.0.0.1:4317`; SQLite separa práctica y sandbox. El retorno HTTPS de la demo apunta a la documentación oficial de Reap: el usuario vuelve a la pestaña original y consulta el estado. **No hay callback HTTPS público ni autenticación multiusuario**. No publicar este servidor local; una entrega pública exige autenticación y aislamiento por tienda, HTTPS propio y revisión de despliegue.
+La app escucha solo en `127.0.0.1:4317`; SQLite separa práctica y sandbox. El retorno HTTPS de la demo apunta a la documentación oficial de Reap: el usuario vuelve a la pestaña original y consulta el estado. **Este es el lanzador local anterior.** El MVP unificado en 4321 agrega autenticación de propietario y HTTPS por Cloudflare; ver README. No ofrece aislamiento multitienda.
 
 El transporte bloquea producción y destinos alternativos. Checkout sandbox utiliza la cabecera oficial `X-Simulate-Checkout: COMPLETED`; aun así, la aplicación exige enrollment ACTIVE y confirmación posterior por GET. Antes del POST persiste snapshot, reserva y clave de idempotencia. Ante timeout conserva el mismo intento; después de 24 horas requiere revisión manual. El retorno del navegador no acredita compra.
 
@@ -75,3 +75,9 @@ Pendiente: consultar ese mismo checkout hasta conocer su resultado final. No se 
 - [Create checkout](https://docs.reap.global/api-reference/agentic/create-checkout)
 - [Idempotencia](https://docs.reap.global/api-reference/idempotency)
 - [Evento](https://aibuilders.mx/reap#apis)
+
+## Seguimiento desde el MVP integrado · 9 de octubre de 2026
+
+Se conservó el checkout `cc6753a9-1f2a-4eb8-8ed0-69b8b3fa4db6`, propuesta `5215d68c-2f0e-44b1-834d-61c11b540211`, enrollment `8490ec29-45c7-4f28-846b-de149bc6041d` y reserva de $360 MXN. La consulta del mismo intento continúa devolviendo PROCESSING. El worker vuelve a consultar cada minuto; un fallo de credencial conserva la reserva y muestra LOOKUP_FAILED. No se creó ni aprobó una compra adicional para forzar un resultado terminal.
+
+La recepción y venta del documento DEMO-WA-001 son movimientos de prueba del inventario sandbox, independientes del pedido Reap pendiente. No acreditan pago, entrega comercial ni compra completada.

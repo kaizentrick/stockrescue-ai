@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Acceso · StockRescue</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/login.js" defer></script>
+  </head>
+  <body>
+    <main class="login">
+      <a class="wordmark" href="/demo">StockRescue</a>
+      <h1>Tu tienda, bajo control.</h1>
+      <p>
+        Ingresa con la contraseña guardada en 1Password:
+        <strong>StockRescue Owner</strong>.
+      </p>
+      <form id="login">
+        <label
+          >Contraseña del propietario<input
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            required /></label
+        ><button class="primary">Entrar</button>
+        <p id="error" role="alert"></p>
+      </form>
+      <a href="/demo">Explorar demostración con datos simulados</a>
+    </main>
+  </body>
+</html>

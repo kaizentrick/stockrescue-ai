@@ -7,6 +7,7 @@
     <title>StockRescue · Reposición con control</title>
     <link rel="stylesheet" href="/style.css" />
     <script src="/app.js" defer></script>
+    <script src="/operations.js" defer></script>
   </head>
   <body>
     <a class="skip" href="#inventory">Ir al inventario</a>
@@ -55,6 +56,10 @@
         ><button data-view="orders">
           Pedidos y recepción <span id="order-count"></span></button
         ><button data-view="history">Historial</button
+        ><button data-view="movements">Movimientos</button
+        ><button data-view="documents">Documentos</button
+        ><button data-view="simulations">Simulaciones</button
+        ><button data-view="agent">Agente y avisos</button
         ><button id="refresh" class="refresh">Actualizar</button>
       </nav>
       <section id="inventory" class="workspace">
@@ -125,6 +130,174 @@
         <p>StockRescue · MVP de reposición</p>
         <p>Datos locales · <span id="updated">Sin sincronizar</span></p>
       </footer>
+      <section id="movements" class="operations-panel" hidden>
+        <h2>Movimientos de inventario</h2>
+        <p>
+          Registra lo que ocurrió. Cada cambio requiere revisión y conserva su
+          referencia.
+        </p>
+        <form id="movement-form" class="form-grid">
+          <label
+            >Producto<select
+              name="productId"
+              class="sku-select"
+            ></select></label
+          ><label
+            >Tipo<select name="kind">
+              <option value="SALE">Venta</option>
+              <option value="CONSUMPTION">Consumo</option>
+              <option value="WASTE">Merma</option>
+              <option value="RETURN">Devolución</option>
+              <option value="ADJUSTMENT">Ajuste</option>
+              <option value="RECEIPT">Recepción externa confirmada</option>
+            </select></label
+          ><label
+            >Cantidad en unidades de inventario<input
+              name="quantity"
+              type="number"
+              step="1"
+              required /></label
+          ><label
+            >Fecha y hora (CDMX)<input
+              name="at"
+              type="datetime-local"
+              required /></label
+          ><label class="span-two"
+            >Motivo o referencia<input
+              name="note"
+              minlength="3"
+              maxlength="500"
+              required /></label
+          ><button class="primary">Revisar movimiento</button>
+        </form>
+        <div id="movement-list"></div>
+      </section>
+      <section id="documents" class="operations-panel" hidden>
+        <h2>Documentos por revisar</h2>
+        <p>
+          Sube un ticket, factura o recepción. La extracción se revisa antes de
+          guardar movimientos; una factura de compra no aumenta el inventario.
+        </p>
+        <form id="document-upload">
+          <label
+            >Imagen o PDF · máximo 8 MB<input
+              name="document"
+              type="file"
+              accept="image/jpeg,image/png,application/pdf"
+              required /></label
+          ><button class="primary">Leer con Gemini</button>
+        </form>
+        <div id="document-list"></div>
+      </section>
+      <section id="simulations" class="operations-panel" hidden>
+        <h2>Explora la próxima semana</h2>
+        <p>
+          Datos simulados, separados de la operación. La evaluación usa
+          únicamente días anteriores para cada predicción.
+        </p>
+        <form id="simulation-form" class="form-grid">
+          <label
+            >Producto<select
+              name="productId"
+              class="sku-select"
+            ></select></label
+          ><label
+            >Escenario<select name="pattern">
+              <option value="regular">Demanda regular</option>
+              <option value="weekly">Variación semanal</option>
+              <option value="promotion">Promoción</option>
+              <option value="delay">Retraso del proveedor</option>
+            </select></label
+          ><label
+            >Cambio de demanda (%)<input
+              name="uplift"
+              type="number"
+              value="30"
+              min="-90"
+              max="300"
+              required /></label
+          ><label
+            >Consumo diario supuesto<input
+              name="dailyDemand"
+              type="number"
+              min="0"
+              step="0.1"
+              value="3"
+              required /></label
+          ><label
+            >Semilla reproducible<input
+              name="seed"
+              type="number"
+              value="42"
+              min="1"
+              required /></label
+          ><label
+            >Retraso adicional (días)<input
+              name="delayDays"
+              type="number"
+              value="0"
+              min="0"
+              max="90" /></label
+          ><button class="primary">Simular escenario</button>
+        </form>
+        <div id="simulation-result" aria-live="polite"></div>
+        <div id="forecast-result"></div>
+      </section>
+      <section id="agent" class="operations-panel" hidden>
+        <h2>Tu asistente de inventario</h2>
+        <div id="integrations" class="summary"></div>
+        <div id="chat-history" class="chat-history" aria-live="polite"></div>
+        <form id="chat-form">
+          <label
+            >Mensaje<textarea
+              name="message"
+              rows="2"
+              placeholder="¿Qué pasa si vendo 30 % más café la próxima semana?"
+              required
+              maxlength="4000"
+            ></textarea></label
+          ><button class="primary">Enviar</button>
+        </form>
+        <h3>Recordatorios · America/Mexico_City</h3>
+        <form id="reminder-form" class="form-grid">
+          <label
+            >Tipo<select name="kind">
+              <option value="reminder">Recordatorio</option>
+              <option value="summary">
+                Resumen actualizado de inventario y pedidos
+              </option>
+            </select></label
+          >
+          <label
+            >Recordatorio<input
+              name="text"
+              required
+              minlength="3"
+              maxlength="800" /></label
+          ><label
+            >Fecha y hora CDMX<input
+              name="dueAt"
+              type="datetime-local"
+              required /></label
+          ><label
+            >Frecuencia<select name="repeat">
+              <option value="none">Una vez</option>
+              <option value="daily">Diario</option>
+              <option value="weekly">Semanal</option>
+            </select></label
+          ><label
+            >Canal<select name="channel">
+              <option value="web">Plataforma web</option>
+              <option value="whatsapp">WhatsApp autorizado</option>
+            </select></label
+          ><button class="primary">Revisar recordatorio</button>
+        </form>
+        <div id="reminder-list"></div>
+        <h3>Avisos y entregas</h3>
+        <div id="notification-list"></div>
+        <div id="delivery-list"></div>
+        <button id="logout" class="quiet">Cerrar sesión</button>
+      </section>
     </main>
     <dialog id="import-dialog" aria-labelledby="import-title">
       <form method="dialog" class="dialog-heading">
@@ -296,6 +469,19 @@
         <p class="form-error" role="alert"></p>
         <button type="submit" class="primary">Aprobar este total</button>
       </form>
+    </dialog>
+    <dialog id="action-dialog">
+      <h2>Revisa antes de confirmar</h2>
+      <pre id="action-preview"></pre>
+      <p>
+        Esta confirmación corresponde solo a la acción mostrada. Si cambian los
+        datos, vuelve a revisarla.
+      </p>
+      <div class="actions">
+        <button id="action-confirm" class="primary">Confirmar acción</button
+        ><button type="button" id="action-cancel">Volver</button>
+      </div>
+      <p id="action-error" role="alert"></p>
     </dialog>
     <noscript
       >Activa JavaScript para importar inventario y gestionar

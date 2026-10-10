@@ -5,7 +5,7 @@ export class Store {
   constructor(path = ":memory:") {
     this.db = new DatabaseSync(path);
     this.db.exec(
-      "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS stockrescue_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS mock_orders (key TEXT PRIMARY KEY, data TEXT NOT NULL);",
+      "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS stockrescue_state (id INTEGER PRIMARY KEY CHECK(id=1), data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS movements (id TEXT PRIMARY KEY, product_id TEXT NOT NULL, kind TEXT NOT NULL, quantity INTEGER NOT NULL, at TEXT NOT NULL, origin TEXT NOT NULL, reference TEXT NOT NULL, note TEXT NOT NULL); CREATE TABLE IF NOT EXISTS mock_orders (key TEXT PRIMARY KEY, data TEXT NOT NULL);",
     );
     this.db
       .prepare("INSERT OR IGNORE INTO stockrescue_state VALUES (1, ?)")

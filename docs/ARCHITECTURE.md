@@ -1,6 +1,6 @@
 # Arquitectura de StockRescue
 
-Aplicación de un operador local para analizar inventario y ejecutar una reposición supervisada en práctica o Reap sandbox. Node.js 24+ ejecuta TypeScript directamente; HTTP y SQLite son nativos. La interfaz usa HTML, JavaScript y CSS. Se conserva la base anterior y se reemplaza el dominio de hardware por inventario, propuestas y recepción.
+Aplicación de un propietario autenticado para analizar inventario y ejecutar una reposición supervisada en práctica o Reap sandbox. Node.js 24+ ejecuta TypeScript directamente; HTTP y SQLite son nativos. La interfaz usa HTML, JavaScript y CSS. Se conserva la base anterior y se reemplaza el dominio de hardware por inventario, propuestas y recepción.
 
 ## Módulos
 
@@ -15,7 +15,12 @@ Aplicación de un operador local para analizar inventario y ejecutar una reposic
 | `src/reap.ts` | Transporte exclusivo del sandbox de Singapur, rutas y enlaces hospedados permitidos |
 | `src/server.ts` | HTTP, Host/Origin, entradas, límites, CSP e interfaz |
 | `src/start-sandbox.ts` | Lee la credencial por 1Password CLI y arranca sandbox sin escribir secretos |
-| `public/` | Inventario, detalle, CSV, confirmaciones, pedidos y registro |
+| `src/operations.ts` | Movimientos y documentos transaccionales, previews, memoria conversacional, programación, avisos, simulaciones y pronóstico |
+| `src/access.ts` | Sesiones privadas de propietario, cookie HttpOnly/SameSite y límite de intentos |
+| `src/mvp.ts` | Servidor unificado en 4321, webhook, worker con lease, reconciliación y tareas efectivas |
+| `src/launch.ts`, `src/meta-setup.ts`, `src/control.ts` | 1Password por pipes, Quick Tunnel, suscripción de StockRescue y LaunchAgent |
+| `src/agent/` | Gemini AI Studio, Cloud API, medios oficiales, cola durable y confirmaciones |
+| `public/` | Inventario, compras, movimientos, documentos, simulaciones, agente, avisos, acceso y demo aislada |
 
 `src/merchant-directory.ts` conserva extractos de electrónica del prototipo anterior; no selecciona el producto actual. El café se configura en el proveedor y se documenta en [MERCHANTS.md](MERCHANTS.md).
 
@@ -63,4 +68,16 @@ Cada recepción tiene clave idempotente. Se valida contra el saldo pendiente y l
 - `sandbox`: proveedor conectado a `https://sg.sandbox.api.reap.global`, con `.data/stockrescue-sandbox.sqlite`. Configuración y evidencia en [REAP-INTEGRATION.md](REAP-INTEGRATION.md).
 - Cualquier otro modo se rechaza; no hay pagos productivos.
 
-MVP monotienda, sin autenticación, roles, aislamiento multitenant, POS, forecasting estadístico, reembolsos o conciliación contable. El registro local es revisable, no un registro antifraude firmado; un administrador del archivo puede editarlo. La validación remota se registra por separado del estado de implementación.
+MVP monotienda con autenticación de propietario; sin roles, aislamiento multitenant, POS, reembolsos o conciliación contable. El registro local es revisable, no un registro antifraude firmado; un administrador del archivo puede editarlo. La validación remota se registra por separado del estado de implementación.
+
+## Canales, documentos y programación
+
+La UI y WhatsApp comparten `Service` y la misma base sandbox. Todas las propuestas de modificación se vinculan al propietario/remitente, vencimiento y revisiones pertinentes. Los documentos añaden una huella de su versión; editar la revisión invalida una confirmación anterior. Movimiento, documento, estado y auditoría se confirman dentro de la misma transacción. La huella del archivo y la identidad tipo/proveedor/folio/fecha impiden duplicados.
+
+Los archivos llegan por el endpoint autenticado o por la API oficial de Meta, con MIME y tamaño limitados. Gemini trata el documento como datos; no recibe capacidad para confirmar ni comprar. Una recepción aumenta stock, una venta lo descuenta y una factura de compra solo se archiva. Cada unidad exige conversión explícita al SKU.
+
+El worker reclama un lease renovable en SQLite. Mensajes entrantes se deduplican por el ID de Meta y respuestas se persisten antes de enviar. Un envío de resultado incierto queda REVIEW sin reintento automático. Los eventos de entrega/fallo se relacionan por outbound_id; los ajenos no acreditan conexión. El webhook es público, exige firma de los bytes originales y filtra número y remitente; la autenticación del panel no lo bloquea.
+
+Un tick procesa recordatorios y avisos; los resúmenes se calculan al vencer, no al programarlos. Se preservan cancelación y periodicidad diaria/semanal CDMX al reiniciar. Cada ocurrencia tiene huella única. Se consulta el mismo checkout abierto cada minuto; no se crea otro. `launchd` recupera el supervisor, que reinicia el servidor y renueva el callback cuando cambia el Quick Tunnel.
+
+El pronóstico usa ventas/consumo confirmados y días completos anteriores (hasta 28). Antes de siete días utiliza un supuesto explícito editable. Las series sintéticas se guardan aparte con semilla y configuración. El backtest compara promedio móvil de los 14 días anteriores con el supuesto fijo, usando MAE; no representa precisión validada en un negocio real.

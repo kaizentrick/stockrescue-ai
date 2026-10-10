@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Demo pública · StockRescue</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/demo.js" defer></script>
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="wordmark" href="/demo"
+        >StockRescue<span>Reposición con control</span></a
+      >
+      <p>Demostración · datos simulados</p>
+      <a href="/login">Acceso del propietario</a>
+    </header>
+    <main>
+      <section class="introduction">
+        <div>
+          <h1>Anticipa lo que <em>va a faltar.</em></h1>
+          <p>
+            Explora inventario y una previsión con ventas sintéticas. Los datos
+            y pedidos del propietario están protegidos.
+          </p>
+        </div>
+      </section>
+      <section>
+        <h2>Inventario de ejemplo</h2>
+        <div id="demo-products" class="summary"></div>
+        <h2>Si la demanda crece 30 %</h2>
+        <p id="demo-scenario"></p>
+        <p class="small">
+          Escenario reproducible: semilla 42, variación semanal y evaluación con
+          días anteriores. Esta vista no registra movimientos ni ejecuta
+          compras.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

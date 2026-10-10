@@ -147,6 +147,19 @@ export class Service {
         throw new Error(
           "Conserva la identidad y unidad mientras hay mercancía por recibir.",
         );
+      if (p.onHand !== old.onHand)
+        this.store.db
+          .prepare("INSERT INTO movements VALUES (?,?,?,?,?,?,?,?)")
+          .run(
+            randomUUID(),
+            id,
+            "ADJUSTMENT",
+            p.onHand - old.onHand,
+            new Date(this.now()).toISOString(),
+            "web",
+            "product-edit",
+            "Ajuste manual desde inventario",
+          );
       s.products[idx] = p;
       this.invalidate(s, id);
       return p;
@@ -201,6 +214,19 @@ export class Service {
             throw new Error(
               "No se pueden cambiar unidades de mercancía por recibir.",
             );
+          if (p.onHand !== old.onHand)
+            this.store.db
+              .prepare("INSERT INTO movements VALUES (?,?,?,?,?,?,?,?)")
+              .run(
+                randomUUID(),
+                p.id,
+                "ADJUSTMENT",
+                p.onHand - old.onHand,
+                new Date(this.now()).toISOString(),
+                "csv",
+                "import",
+                "Ajuste por importación CSV",
+              );
           p.revision = old.revision + 1;
           s.products[s.products.indexOf(old)] = p;
         } else s.products.push(p);
@@ -665,6 +691,18 @@ export class Service {
       if (product.onHand + quantity > product.maxStock)
         throw new Error(
           "La recepción supera la capacidad; revisa el inventario.",
+        );
+      this.store.db
+        .prepare("INSERT INTO movements VALUES (?,?,?,?,?,?,?,?)")
+        .run(
+          key,
+          product.id,
+          "RECEIPT",
+          quantity,
+          new Date(this.now()).toISOString(),
+          "web",
+          id,
+          "Recepción de pedido " + incoming.orderId,
         );
       product.onHand += quantity;
       product.revision++;

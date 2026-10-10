@@ -57,6 +57,10 @@ async function api(path, data) {
       "El servidor no respondió. Tus datos guardados siguen disponibles al reconectar.",
     );
   }
+  if (response.status === 401) {
+    location.href = "/login";
+    throw new Error("Inicia sesión.");
+  }
   if (!response.ok)
     throw new Error(result.error || "No se pudo completar la operación.");
   return result;
@@ -293,7 +297,16 @@ function renderHistory() {
 }
 function showView(next, focus = true) {
   view = next;
-  for (const id of ["inventory", "orders", "history"])
+  window.dispatchEvent(new CustomEvent("stockrescue:view", { detail: next }));
+  for (const id of [
+    "inventory",
+    "orders",
+    "history",
+    "movements",
+    "documents",
+    "simulations",
+    "agent",
+  ])
     $("#" + id).hidden = id !== next;
   document.querySelectorAll(".workspace-nav [data-view]").forEach((b) => {
     if (b.dataset.view === next) b.setAttribute("aria-current", "page");
@@ -544,3 +557,18 @@ run(async () => {
       "Regresaste de Reap. Consulta la vinculación o el pedido para verificar su estado.",
     );
 });
+
+window.addEventListener("stockrescue:changed", () => void reload());
+
+// Keep incoming WhatsApp changes visible without interrupting an active form.
+setInterval(() => {
+  if (
+    document.hidden ||
+    busy ||
+    !["inventory", "orders", "history"].includes(view) ||
+    document.querySelector("dialog[open]") ||
+    document.activeElement?.matches("input,textarea,select")
+  )
+    return;
+  void reload().catch((e) => notify(e.message, true));
+}, 15000);

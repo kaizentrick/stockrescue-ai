@@ -20,7 +20,10 @@
     "agent:start": "node --env-file-if-exists=.env.agent src/agent/start.ts",
     "agent:dev": "node --env-file-if-exists=.env.agent --watch src/agent/start.ts",
     "agent:sandbox": "node --env-file-if-exists=.env.agent src/start-sandbox.ts --agent",
-    "agent:alerts": "node --env-file-if-exists=.env.agent src/agent/alerts.ts"
+    "agent:alerts": "node --env-file-if-exists=.env.agent src/agent/alerts.ts",
+    "mvp": "node src/launch.ts",
+    "mvp:public": "node src/launch.ts --tunnel",
+    "service": "node src/control.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

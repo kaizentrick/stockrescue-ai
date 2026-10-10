@@ -4,24 +4,36 @@
 
 El MVP reutiliza persistencia, aprobaciones e idempotencia del prototipo Reap Workplace Agent. Su caso principal es reponer **Café Guerrero Atoyac de Blend Station, bolsa de 250 g en grano**, incluido en la lista de comercios del evento. Vasos y filtros permiten explorar el mismo cálculo, pero no tienen proveedor habilitado para comprar.
 
-**Estado:** práctica local funcional y conexión autenticada al sandbox de Reap. El nuevo enrollment llegó a **ACTIVE** con tarjeta oficial de prueba, OTP y passkey en Safari. Se obtuvo y aprobó una cotización de una bolsa por **$360 MXN** ($300 de producto y $60 de envío); el checkout simulado se autorizó y continúa **PROCESSING**, con referencia de pedido y sin acciones pendientes. Todavía no se declara COMPLETED. Los importes son evidencia de esa prueba, no precios futuros garantizados. Ver [integración Reap](docs/REAP-INTEGRATION.md) y [validación](docs/QA.md). Producción está bloqueada; existencias, consumo y dirección inicial son ejemplos.
+**Estado verificado el 9 de octubre de 2026:** plataforma protegida y demostración pública, Google AI Studio con `gemini-3.8-flash`, conversación y documentos reales por WhatsApp Cloud API. Los datos operativos siguen siendo los ejemplos del sandbox. El checkout Reap existente continúa **PROCESSING** por $360 MXN: se conserva el mismo intento y su reserva, sin otra compra. Ver [QA](docs/QA.md) y [Reap](docs/REAP-INTEGRATION.md).
 
-## Ejecutar
+## Ejecutar el MVP conectado
 
-Requiere Node.js 24 o superior y npm.
+Requiere macOS, Node.js 24+, npm, Cloudflare `cloudflared` y 1Password CLI (`op`). Las credenciales se leen por pipes desde la bóveda, nunca desde archivos `.env`.
 
 ```sh
 npm ci
 npm run check
 npm run build
-npm start
+npm run service -- status
+# Primer registro en este Mac (ya realizado):
+# npm run service -- install
+npm run service -- stop
+npm run service -- start
+# Recuperación de un servicio ya cargado:
+npm run service -- restart
 ```
 
-Abrir [StockRescue local](http://127.0.0.1:4317). Sin configuración adicional se inicia en **Práctica local**; no requiere llave ni realiza compras externas. `npm run dev` reinicia el servidor al editar TypeScript.
+El LaunchAgent `com.kaizentrick.stockrescue` arranca al iniciar sesión, recupera procesos y ejecuta una sola instancia del worker. 1Password debe estar desbloqueado y autorizar su CLI al iniciar. Para diagnóstico en primer plano: detener primero el servicio y ejecutar `npm run mvp:public`; `npm run mvp` sirve solamente en localhost:4321. No ejecutar los lanzadores antiguos del agente junto con el MVP.
 
-Los datos se guardan en `.data/stockrescue-mock.sqlite`; sandbox usa una base separada, `.data/stockrescue-sandbox.sqlite`. Ambas están excluidas de Git. El servidor escucha en `127.0.0.1`. El MVP es de un operador local, sin autenticación multiusuario: no publicarlo como servicio abierto.
+URL verificada al entregar: [MVP protegido](https://tours-representation-concerts-pipe.trycloudflare.com) y [demostración pública](https://tours-representation-concerts-pipe.trycloudflare.com/demo).
 
-Para abrir el entorno conectado, usar `npm run sandbox` con 1Password CLI (`op`) y la bóveda desbloqueada. El lanzador lee el campo secreto `credential` del elemento `StockRescue Reap sandbox`, sin imprimirlo ni crear un archivo de secretos. Ver configuración, caducidad de la llave y resultado del último intento en [integración Reap](docs/REAP-INTEGRATION.md).
+La dirección HTTPS vigente se consulta con `npm run service -- status`; `/` requiere la contraseña del elemento **StockRescue Owner** en 1Password. `/demo` ofrece datos simulados aislados. El **Quick Tunnel dura mientras corre cloudflared** y cambia de URL al reiniciar el supervisor; el lanzador actualiza el callback de Meta automáticamente. No se encontró una cuenta y dominio de Cloudflare configurados para un túnel estable. Mac despierto, conexión y sesión iniciada son necesarios.
+
+Elementos de bóveda: `StockRescue Reap sandbox`, `GOOGLE_AI_STUDIO_API_KEY`, `StockRescue Owner`, `StockRescue WhatsApp`, todos en su campo `credential`. El último contiene la configuración de Meta en JSON. `.data/service.json` contiene únicamente `{"metaConfigured":true}`, sin secretos. Datos: `.data/stockrescue-sandbox.sqlite`; cola: `.data/stockrescue-agent.sqlite`; no borrar ninguno para recuperar una operación. `.data` es privada y está excluida de Git.
+
+El bot de prueba es **+1 555 653 4554**. Solo se admite **+52 55 3373 4608**; Meta puede representarlo con el prefijo mexicano antiguo `521`. La app **StockRescue** está separada de Cenlo. El token Meta se renovó con vigencia de 60 días; necesita renovación antes de caducar. La clave Reap del evento vence el 11 de octubre a las 00:00 CDMX. Los avisos fuera de la ventana de atención requieren la plantilla aprobada por Meta; ver [configuración y dependencias](docs/AGENT-INTEGRATION.md).
+
+Para práctica completamente local y sin credenciales: `npm start`, puerto 4317 y `.data/stockrescue-mock.sqlite`. Ese lanzador antiguo no es el despliegue público protegido.
 
 ## Primer recorrido
 
@@ -36,7 +48,11 @@ El café inicial sugiere una bolsa: objetivo de tres menos dos disponibles, con 
 
 ## Controles y alcance
 
-- Motor determinista de mínimos y máximos; no hay LLM ni predicción estadística de ventas.
+- Motor min/max conservado, historial de movimientos y pronóstico por promedio histórico; si faltan siete días completos se declara el consumo editable como supuesto.
+- Gemini interpreta consultas y propone movimientos, recepciones y recordatorios; cada cambio relevante exige confirmación del backend.
+- PDF, JPEG y PNG con extracción, corrección por SKU/unidad, detección de duplicados y confirmación transaccional. Una factura de compra se archiva sin sumar stock.
+- Simulación reproducible de demanda regular, semanal, promociones y retrasos, separada del inventario; evaluación temporal sin usar datos posteriores.
+- Recordatorios y resúmenes actualizados, una vez/diarios/semanales en CDMX; avisos persistentes y estados de entrega asociados al mensaje.
 - Distingue piezas de inventario y paquetes comprados; no compra por demanda cero ni cuando el empaque excede capacidad.
 - Incluye mercancía comprometida para evitar sobrecompra y señala entregas tardías.
 - Valida CSV con errores por fila; actualizar datos revoca propuestas y aprobaciones sin enviar.
@@ -45,7 +61,7 @@ El café inicial sugiere una bolsa: objetivo de tres menos dos disponibles, con 
 - Un timeout conserva intento y reserva. El retorno del navegador nunca acredita un pago.
 - Importes en centavos MXN, sin conversión implícita. No se permite comprar a un comercio arbitrario desde un CSV.
 
-El MVP cubre una tienda local y un producto comprable mediante el adaptador. No incluye usuarios/roles, múltiples empresas, POS, facturación, reembolsos, reposiciones automáticas ni ejecución productiva. El plazo de llegada procede de la estimación del inventario, no de una promesa del comercio. La utilidad comercial aún requiere un piloto.
+El MVP cubre una tienda local y un producto comprable mediante el adaptador. Incluye acceso de un propietario; no incluye roles, múltiples empresas, POS, emisión fiscal, reembolsos, compras automáticas ni ejecución productiva. El plazo de llegada procede de la estimación del inventario, no de una promesa del comercio. La utilidad comercial aún requiere un piloto.
 
 ## Piezas reutilizadas
 
@@ -62,7 +78,7 @@ No se incorporó un ERP completo ni una biblioteca de agentes. La interfaz usa H
 
 ## Documentación actual
 
-- [Entorno del agente de WhatsApp y Google AI Studio](docs/AGENT-INTEGRATION.md): configuración, webhook, preview, confirmación y alertas. Proceso separado del SaaS; requiere credenciales de Gemini y Meta para tráfico real.
+- [Entorno del agente de WhatsApp y Google AI Studio](docs/AGENT-INTEGRATION.md): configuración, webhook firmado, documentos, confirmaciones, avisos y recuperación del proceso unificado.
 - [Arquitectura y cálculo](docs/ARCHITECTURE.md)
 - [Integración Reap y sandbox](docs/REAP-INTEGRATION.md)
 - [Producto de la lista de comercios](docs/MERCHANTS.md)

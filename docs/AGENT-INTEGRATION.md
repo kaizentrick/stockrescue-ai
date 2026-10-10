@@ -1,125 +1,79 @@
-# Entorno del agente de WhatsApp
+# Agente operativo de StockRescue
 
-Base de integración de **Google AI Studio / Gemini API** y **Meta WhatsApp Cloud API** para complementar StockRescue. Implementada en [PR #3](https://github.com/kaizentrick/stockrescue-ai/pull/3), sobre `cx/stockrescue-mvp` ([PR #2](https://github.com/kaizentrick/stockrescue-ai/pull/2)).
+Verificación real del 9 de octubre de 2026 (CDMX). La base de [PR #3](https://github.com/kaizentrick/stockrescue-ai/pull/3) está integrada en [PR #2](https://github.com/kaizentrick/stockrescue-ai/pull/2). Google AI Studio respondió con `gemini-3.8-flash`; WhatsApp recibió consultas y PDF, respondió y produjo eventos `sent`, `delivered` y `read`. La plataforma y el bot comparten inventario, documentos y operaciones. Reap conserva su checkout **PROCESSING**, sin otra compra.
 
-**Estado:** configuración, clientes HTTP, webhook, cola persistente y puente al SaaS implementados y probados con transportes simulados. No se han usado llaves reales de Google/Meta ni enviado WhatsApps en esta implementación. Las cuentas, número, plantilla aprobada y callback HTTPS los configura el operador. El estado del sandbox de pagos se documenta por separado en [REAP-INTEGRATION.md](REAP-INTEGRATION.md).
+## Ejecución y credenciales
 
-## Arquitectura
+El proceso unificado `src/mvp.ts` sirve en `127.0.0.1:4321`. El panel requiere autenticación; `/demo` es público y usa datos simulados independientes. `/webhooks/whatsapp` es público con challenge y firma HMAC. El supervisor `src/launch.ts` lee mediante **1Password CLI**, captura los secretos en memoria, inicia el servidor y Cloudflare y actualiza la suscripción de la app cuando cambia la URL.
 
-```text
-WhatsApp → gateway :4318 → verificación de firma y destinatario → cola SQLite
-  → worker → consultas Gemini / comandos → servicio de StockRescue
-  → respuesta por Meta Cloud API
-
-Alertas → cálculo min/max del SaaS → preview → plantilla Meta aprobada
-Confirmación explícita → snapshot vigente → aprobación/checkouts del SaaS
+```sh
+npm run service -- status
+npm run service -- stop
+npm run service -- start
+npm run service -- restart
+# Diagnóstico, con el servicio detenido:
+npm run mvp:public
 ```
 
-El gateway publica únicamente `/health` y `/webhooks/whatsapp`. La UI/API local del SaaS sigue en el puerto 4317. Ambos procesos usan `createRuntimeService()` y la misma base de la tienda; cantidades, presupuesto, cotización, idempotencia y recepción pertenecen al SaaS. No se duplicó el motor de inventario.
+`npm run service -- install` registra una sola vez el LaunchAgent `com.kaizentrick.stockrescue`; ya está instalado en este Mac. Se inicia con la sesión y se recupera tras fallos. Requiere que 1Password permita leer las credenciales y que el Mac esté despierto y conectado. No reiniciar ni detener Codex/Aside para administrarlo. No arrancar simultáneamente el gateway antiguo `agent:start` o el job antiguo `agent:alerts`.
 
-## Preparar y ejecutar
+Los elementos son `GOOGLE_AI_STUDIO_API_KEY`, `StockRescue Reap sandbox`, `StockRescue Owner` y `StockRescue WhatsApp`, campo `credential`. El último es JSON con `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_API_VERSION`, `WHATSAPP_ALERT_TEMPLATE`, `WHATSAPP_TEMPLATE_LANGUAGE`. Nunca imprimir ni copiar sus valores a `.env`, Git, navegador o logs. Para renovar, editar el elemento con 1Password CLI mediante stdin y reiniciar el servicio; no pasar valores secretos como argumentos.
 
-Requiere Node.js 24+; se usan HTTP/fetch/SQLite nativos, sin SDK adicional ni dependencia de Python. El archivo `.env.agent.example` es una plantilla sin credenciales. Puedes inyectar variables desde el gestor de secretos o preparar una copia local ignorada por Git:
+Configuración no secreta local: `.data/service.json` con `{"metaConfigured":true}`. La contraseña del propietario se entrega por **StockRescue Owner** en la bóveda. Las sesiones duran 12 horas y usan cookies HttpOnly y SameSite=Strict, Secure por HTTPS; hay límite de intentos de acceso. No hay cuentas de clientes ni aislamiento entre empresas.
 
-```powershell
-npm ci
-Copy-Item .env.agent.example .env.agent
-# Completar .env.agent localmente; no subirlo ni pegar sus valores en chats.
-npm run agent:check
-npm start
-# En otra terminal, dentro del mismo repositorio:
-npm run agent:start
-```
+## Configuración de Meta comprobada
 
-`agent:check` valida campos y nombres de configuración; no verifica credenciales remotamente ni imprime secretos. `agent:dev` reinicia el gateway al editar. Cada consulta natural a Gemini usa la llave solo en `x-goog-api-key`, un host fijo y timeout; las compras no dependen de una respuesta del modelo.
+| Recurso | Valor |
+|---|---|
+| App independiente | StockRescue · `1898550861524224` |
+| Negocio | Kaizen Trick · `8539219712820315` |
+| WABA de prueba | `967650119417397` |
+| Número del bot | +1 555 653 4554 |
+| Phone Number ID | `1087049364500197` |
+| Único destinatario autorizado | +52 55 3373 4608 |
+| Versión Graph | v26.0 |
+| Suscripción | whatsapp_business_account / messages, activa |
+| Plantilla | stockrescue_notification · es_MX · UTILITY |
+| ID de plantilla | `2260490044523058` |
 
-| Variable                                                 | Configurar con                                                                      |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `GEMINI_API_KEY`                                         | Llave creada en Google AI Studio                                                    |
-| `GEMINI_MODEL`                                           | Modelo habilitado en la cuenta; defecto `gemini-3.8-flash`, configurable            |
-| `WHATSAPP_ACCESS_TOKEN`                                  | Token Meta con permiso `whatsapp_business_messaging` para el número                 |
-| `WHATSAPP_PHONE_NUMBER_ID`                               | ID del número de API Setup; no el ID de WABA ni el número visible                   |
-| `WHATSAPP_APP_SECRET`                                    | App Secret de la misma app que envía los webhooks                                   |
-| `WHATSAPP_VERIFY_TOKEN`                                  | Secreto propio de al menos 16 caracteres; mismo valor en Meta y gateway             |
-| `WHATSAPP_ALLOWED_SENDERS`                               | Números autorizados/con consentimiento, separados por coma, internacionales sin `+` |
-| `WHATSAPP_API_VERSION`                                   | Versión Graph configurada en Meta; defecto `v25.0`, configurable                    |
-| `WHATSAPP_ALERT_TEMPLATE` / `WHATSAPP_TEMPLATE_LANGUAGE` | Nombre e idioma exactos de una plantilla aprobada                                   |
-| `AGENT_PORT` / `AGENT_DB`                                | Puerto 4318 y cola `.data/stockrescue-agent.sqlite` por defecto                     |
-| `AGENT_ALLOW_CHECKOUT`                                   | `false` por defecto; `true` habilita el comando explícito de confirmación           |
-| `PAYMENTS_MODE` / `STOCKRESCUE_DB`                       | `mock` o `sandbox`, y la misma base que utiliza la tienda del SaaS                  |
+El negocio ofreció su WABA de prueba. Se comprobó que no estaba suscrita a Cenlo; se añadió únicamente la app StockRescue, conservando la aplicación interna de Meta ya suscrita. Las apps de Cenlo no se modificaron. El número descartado no se utilizó para ningún envío. Se normaliza `521` a `52` para el mismo número móvil mexicano, sin ampliar la lista de destinatarios.
 
-Sin `STOCKRESCUE_DB`, el modo selecciona `.data/stockrescue-mock.sqlite` o `.data/stockrescue-sandbox.sqlite`. Para usar el sandbox y la bóveda ya configurada: `npm run agent:sandbox`; este lanzador inyecta la credencial Reap por 1Password sin crear otro archivo de secretos. Si elegiste una ruta de datos personalizada, debe corresponder al mismo modo y a la misma tienda que la UI. No se habilita producción de pagos.
+La plantilla propia está **PENDING** de aprobación de Meta en la última consulta. Contiene cuatro parámetros para servicio, estado, detalle y acción pendiente. Mientras no esté aprobada, los avisos fuera de la ventana de 24 horas no se consideran entregados: quedan REVIEW si Meta rechaza el envío. Dentro de la ventana se envía texto; stock bajo y el resumen programado se comprueban por eventos, no por HTTP 200.
 
-## Conectar Meta
+El token se intercambió por uno de larga duración: Meta devolvió `expires_in=5183999`, aproximadamente 60 días desde el 9 de octubre por la noche. La vigencia no es permanente y debe renovarse antes de caducar. La app y el número continúan siendo de prueba; no se afirma habilitación productiva ni capacidad de enviar a otros números.
 
-1. En Meta Developers, configurar WhatsApp Cloud API, un número de prueba o autorizado y los destinatarios permitidos. Registrar esos mismos remitentes en `WHATSAPP_ALLOWED_SENDERS`.
-2. Exponer **solo el gateway 4318** mediante un callback HTTPS que llegue a `http://127.0.0.1:4318/webhooks/whatsapp`. Configurar en Meta la URL pública completa y el verify token. No exponer el servidor local 4317.
-3. Verificar el challenge y suscribir el campo `messages` para la WABA asociada a la app. Si se gestiona esa suscripción por API, usar los permisos de administración que Meta requiera para esa cuenta.
-4. Enviar `/inventario` desde un destinatario permitido. Luego preguntar «¿cuánto café queda?» para comprobar la llamada a Gemini. El texto de respuesta usa la ventana de atención de 24 horas del mensaje recibido.
-5. Crear y aprobar la plantilla de alertas antes del envío proactivo. Tener token y número no implica tener una plantilla aprobada ni un webhook suscrito.
+## Conversación y confirmaciones
 
-La firma `X-Hub-Signature-256` se comprueba contra los bytes originales con el App Secret. Eventos de otro Phone Number ID o de remitentes no autorizados no se procesan. Se devuelve 200 después de persistir el mensaje; Gemini y el envío a Meta ocurren en un worker separado. Los IDs de mensaje repetidos no ejecutan otra acción.
+| Solicitud | Comportamiento |
+|---|---|
+| `/inventario`, `/pedidos`, `/reporte` | Consulta real del mismo servicio |
+| «Vendí una bolsa de café» | Propone venta; no modifica stock |
+| `/aceptar CODIGO` | Confirma solo la acción vigente del remitente; repetir no duplica |
+| PDF, JPEG o PNG | Descarga oficial, extracción y documento pendiente de revisión |
+| «Simula 30 % más café» | Escenario sintético separado con semilla, supuestos y error de evaluación |
+| «¿Qué demanda prevés?» | Historial confirmado o supuesto explícito si faltan datos |
+| «Recuérdame…», «Programa un resumen…» | Propuesta de tarea persistente, hora CDMX, canal y frecuencia |
+| «Cancela el recordatorio…» | Propuesta de cancelación vinculada al remitente |
+| `/cotizar CAFE-250` | Cotización vigente y confirmación específica, o referencia del intento existente |
+| `/confirmar CODIGO` | Valida cotización, presupuesto y enrollment; solo Reap sandbox |
+| `/consultar ID` | Reconcilia el mismo intento |
 
-## Consultas, preview y confirmación
+Se conservan las últimas 12 interacciones por identidad y tienda. El modelo ve cantidades, estado, análisis y contexto limitado; no recibe llaves, dirección de envío ni correo. Los documentos y resultados se tratan como datos. Las herramientas no permiten confirmar ni comprar: esas decisiones pasan por comandos explícitos y validaciones del backend. Una pregunta que combina varias modificaciones solicita aclaración.
 
-| Mensaje             | Resultado                                                                    |
-| ------------------- | ---------------------------------------------------------------------------- |
-| `/ayuda`            | Comandos disponibles                                                         |
-| `/inventario`       | Disponibilidad, cobertura y cantidades de reposición                         |
-| `/pedidos`          | Estado de compras y cantidad recibida                                        |
-| `/reporte`          | Inventario, pedidos y presupuesto                                            |
-| `/cotizar CAFE-250` | Cotización del SaaS, cantidad, destino, total y código de confirmación       |
-| `/confirmar CODIGO` | Con opt-in y enrollment ACTIVE, aprueba ese snapshot y envía el mismo pedido |
-| `/consultar ID`     | Consulta/reconcilia el mismo intento, sin crear una compra nueva             |
-| Pregunta natural    | Gemini interpreta un contexto del SaaS de solo lectura                       |
+Los documentos conservan bytes y huella en SQLite privado. La UI permite corregir proveedor, folio, fecha, tipo, SKU, cantidad, unidad y conversión. Si hay ambigüedad, no se confirma. Una factura PURCHASE solo se archiva; SALE resta y RECEIPT suma tras confirmación. Hash idéntico o identidad documental repetida no producen otro movimiento. Cambiar la revisión invalida el código anterior. Cada movimiento registra fecha, origen y documento.
 
-El código de confirmación está ligado al remitente, al hash completo de la cotización y a su vencimiento. Recotizar, cambiar inventario/destino o vencer invalida el código. Un «sí» aislado o una instrucción al LLM no ejecuta compras. Confirmar de nuevo un intento existente devuelve su estado. La tarjeta de prueba se vincula en la UI del SaaS; el agente no recibe datos de tarjeta. Recibir mercancía sigue siendo una operación del SaaS y no se infiere de un pago.
+## Avisos y recuperación
 
-Gemini recibe la pregunta y un contexto limitado (hasta 100 productos y 30 propuestas/entradas): nombres/SKU, cantidades, análisis, totales vigentes, estado de pedidos y presupuesto. No se le envían el teléfono del remitente, dirección de envío, correo ni llaves. Este entorno hace consultas independientes: no incluye memoria conversacional prolongada ni interpretación de audio/documentos.
+El worker efectivamente ejecuta recordatorios/resúmenes y detecta stock bajo, cotización próxima a vencer, cambios de pedido y mercancía por recibir. Los resúmenes se calculan con el inventario del momento; frecuencia una vez, diaria o semanal, zona America/Mexico_City. Cancelaciones y ocurrencias sobreviven a reinicios. Si el Mac estuvo apagado se atiende una ocurrencia vencida y se avanza la siguiente, sin enviar una ráfaga histórica.
 
-## Alertas
+La cola deduplica los IDs entrantes. Se persiste la respuesta antes de enviar y el ID saliente al confirmarlo Meta. Eventos de entrega/fallo se relacionan por ese ID. Un resultado incierto queda REVIEW; no se reenvía a ciegas. La pantalla Agente y avisos muestra estos casos. El lease SQLite evita dos workers del MVP. No borrar la base para desbloquear un envío ni liberar una reserva Reap manualmente.
 
-Preparar previews sin mensajes externos ni llamadas a Gemini:
+El Quick Tunnel cambia de dirección al reiniciar su supervisor. `npm run service -- status` muestra la última URL; comprobar `/health`. El lanzador registra `/webhooks/whatsapp` en la misma app y vuelve a suscribir su WABA. Se verificó el cambio real de callback después del reinicio. Si falla, detener el servicio, ejecutar `npm run mvp:public` en primer plano, desbloquear 1Password y revisar la credencial/callback; los errores no imprimen secretos. Volver a iniciar el servicio después de detener la ejecución manual.
 
-```powershell
-npm run agent:alerts
-```
+Pruebas y límites comprobados: [QA](QA.md). No se afirma precisión comercial del pronóstico, continuidad con el Mac dormido, compra COMPLETED ni aprobación de plantilla pendiente.
 
-Cuando Meta, la plantilla y los destinatarios estén configurados, el operador puede ejecutar:
+## Contratos de referencia
 
-```powershell
-npm run agent:alerts -- --send
-```
-
-Texto sugerido para la plantilla `stockrescue_low_stock` (`es_MX`), con **cuatro parámetros de texto en el cuerpo**:
-
-```text
-StockRescue: {{1}} necesita reposición.
-Preview: {{2}}. Total: {{3}}.
-Responde {{4}} para revisar la propuesta.
-```
-
-Los parámetros son nombre, paquetes/piezas calculados, total de una cotización vigente con modo identificado y comando `/cotizar SKU`. Para un SKU sin proveedor habilitado se ofrece `/inventario`; no se promete una cotización disponible. Si falta una cotización vigente, se indica «sin cotización vigente»; no se inventa el coste. La alerta no cotiza, aprueba ni compra automáticamente. El comando de preview obtiene el total concreto antes de confirmar.
-
-El script puede conectarse al programador de tareas del operador; no instala un cron ni crea automatizaciones al ejecutar el setup. El registro separado `AGENT_DB.alerts` evita repetir la misma evidencia para el mismo remitente y día CDMX. Un timeout o respuesta perdida de Meta queda para revisión, sin reenvío automático que pueda duplicar mensajes. Usar un solo proceso del gateway por `AGENT_DB` y un solo job de alertas por registro.
-
-## Operación y pruebas
-
-```powershell
-npm run check
-npm run build
-```
-
-La suite incluye configuración sin filtración de llaves, contratos HTTP Gemini/Meta, firma y challenge, filtros de número/remitente, deduplicación del webhook, aislamiento de datos enviados al modelo, preview, opt-in, confirmation por remitente/vencimiento/snapshot, idempotencia, recuperación de cola, entrega incierta y ventana de 24 horas. Todos usan proveedores falsos; no acreditan habilitación de cuentas ni entrega real por Meta.
-
-Si una respuesta estaba lista al reiniciar, el worker reutiliza ese texto. Si Meta pudo haber aceptado el envío pero se perdió la respuesta, el job queda `REVIEW`; comprobar delivery en Meta y el estado del pedido en el SaaS antes de una intervención manual. No se borran reservas para forzar otra compra. La cola guarda mensajes y remitentes localmente: tratarla como datos privados. `.env.agent`, bases y registros están excluidos de Git.
-
-Este PR entrega un entorno de integración para una sola tienda. Despliegue público, aislamiento entre empresas, identidad corporativa, memoria conversacional y operación gestionada quedan para el agente/SaaS posterior.
-
-## Contratos consultados
-
-- [Google: llave de AI Studio](https://ai.google.dev/gemini-api/docs/api-key)
-- [Google: generateContent](https://ai.google.dev/api/generate-content) y [modelos](https://ai.google.dev/gemini-api/docs/models)
-- [Meta: Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api/)
-- [Meta: webhook y firma](https://whatsapp.github.io/WhatsApp-Nodejs-SDK/api-reference/webhooks/start/)
-- [Meta: plantillas](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates)
+- [Google AI Studio: generateContent](https://ai.google.dev/api/generate-content)
+- [Meta: API y plantillas](https://www.postman.com/meta/whatsapp-business-platform/overview)
+- [Meta: verificación del webhook](https://whatsapp.github.io/WhatsApp-Nodejs-SDK/api-reference/webhooks/start/)

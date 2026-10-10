@@ -2,11 +2,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import type { AgentConfig } from "./config.ts";
 
+// Meta can report the legacy mobile prefix for the same Mexican number.
+export const canonicalPhone = (phone: string) =>
+  /^521\d{10}$/.test(phone) ? "52" + phone.slice(3) : phone;
 export type InboundMessage = {
   id: string;
   from: string;
   text: string;
   timestamp: number;
+  media?: { id: string; mime: string };
 };
 const webhookSchema = z.object({
   object: z.literal("whatsapp_business_account"),
@@ -26,6 +30,12 @@ const webhookSchema = z.object({
                       from: z.string().regex(/^[1-9]\d{6,14}$/),
                       timestamp: z.string().regex(/^\d+$/),
                       type: z.string(),
+                      image: z
+                        .object({ id: z.string(), mime_type: z.string() })
+                        .optional(),
+                      document: z
+                        .object({ id: z.string(), mime_type: z.string() })
+                        .optional(),
                       text: z
                         .object({ body: z.string().min(1).max(4096) })
                         .optional(),
@@ -62,11 +72,24 @@ export function inboundMessages(
       )
         return [];
       return (change.value.messages ?? [])
-        .filter((m) => m.type === "text" && m.text)
+        .filter(
+          (m) =>
+            (m.type === "text" && m.text) ||
+            (m.type === "image" && m.image) ||
+            (m.type === "document" && m.document),
+        )
         .map((m) => ({
           id: m.id,
-          from: m.from,
-          text: m.text!.body,
+          from: canonicalPhone(m.from),
+          text: m.text?.body ?? "Documento recibido",
+          ...((m.image ?? m.document)
+            ? {
+                media: {
+                  id: (m.image ?? m.document)!.id,
+                  mime: (m.image ?? m.document)!.mime_type,
+                },
+              }
+            : {}),
           timestamp: Number(m.timestamp) * 1000,
         }));
     }),
@@ -74,6 +97,7 @@ export function inboundMessages(
 }
 export interface WhatsAppSender {
   sendText(to: string, text: string): Promise<string>;
+  downloadMedia?(id: string): Promise<{ bytes: Buffer; mime: string }>;
   sendAlert(to: string, parameters: string[]): Promise<string>;
 }
 export class WhatsAppClient implements WhatsAppSender {
@@ -109,7 +133,13 @@ export class WhatsAppClient implements WhatsAppSender {
     } catch {
       throw new Error("WHATSAPP_OUTCOME_UNKNOWN");
     }
-    if (!response.ok) throw new Error(`WHATSAPP_HTTP_${response.status}`);
+    if (!response.ok) {
+      const failure = await response.json().catch(() => ({}));
+      const code = Number.isSafeInteger(failure.error?.code)
+        ? "_CODE_" + failure.error.code
+        : "";
+      throw new Error(`WHATSAPP_HTTP_${response.status}${code}`);
+    }
     try {
       const raw: unknown = await response.json();
       return z
@@ -120,6 +150,53 @@ export class WhatsAppClient implements WhatsAppSender {
     } catch {
       throw new Error("WHATSAPP_OUTCOME_UNKNOWN");
     }
+  }
+  async downloadMedia(id: string) {
+    if (!/^\d+$/.test(id)) throw new Error("MEDIA_ID_INVALID");
+    const headers = {
+      Authorization: `Bearer ${this.config.WHATSAPP_ACCESS_TOKEN}`,
+    };
+    const r = await this.transport(
+      `https://graph.facebook.com/${this.config.WHATSAPP_API_VERSION}/${id}`,
+      { headers, redirect: "error", signal: AbortSignal.timeout(15000) },
+    );
+    if (!r.ok) throw new Error("MEDIA_METADATA_UNAVAILABLE");
+    const data = z
+      .object({
+        url: z.url(),
+        mime_type: z.string(),
+        file_size: z.number().optional(),
+      })
+      .parse(await r.json());
+    const url = new URL(data.url);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      !(
+        url.hostname === "lookaside.fbsbx.com" ||
+        url.hostname.endsWith(".fbcdn.net")
+      ) ||
+      !["image/jpeg", "image/png", "application/pdf"].includes(
+        data.mime_type,
+      ) ||
+      (data.file_size ?? 0) > 8 * 1024 * 1024
+    )
+      throw new Error("MEDIA_NOT_SUPPORTED");
+    const content = await this.transport(url, {
+      headers,
+      redirect: "error",
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!content.ok || !content.body) throw new Error("MEDIA_DOWNLOAD_FAILED");
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const c of content.body as unknown as AsyncIterable<Uint8Array>) {
+      size += c.length;
+      if (size > 8 * 1024 * 1024) throw new Error("MEDIA_TOO_LARGE");
+      chunks.push(Buffer.from(c));
+    }
+    return { bytes: Buffer.concat(chunks), mime: data.mime_type };
   }
   sendText(to: string, text: string) {
     return this.send(to, {
@@ -144,4 +221,45 @@ export class WhatsAppClient implements WhatsAppSender {
       },
     });
   }
+}
+
+export function deliveryStatuses(raw: unknown, phoneId: string) {
+  const parsed = z
+    .object({
+      entry: z.array(
+        z.object({
+          changes: z.array(
+            z.object({
+              field: z.string(),
+              value: z.object({
+                metadata: z.object({ phone_number_id: z.string() }).optional(),
+                statuses: z
+                  .array(
+                    z.object({
+                      id: z.string().max(256),
+                      status: z.enum(["sent", "delivered", "read", "failed"]),
+                      timestamp: z.string().regex(/^\d+$/),
+                      recipient_id: z.string(),
+                      errors: z
+                        .array(z.object({ code: z.number() }))
+                        .optional(),
+                    }),
+                  )
+                  .optional(),
+              }),
+            }),
+          ),
+        }),
+      ),
+    })
+    .parse(raw);
+  return parsed.entry.flatMap((e) =>
+    e.changes
+      .filter(
+        (c) =>
+          c.field === "messages" &&
+          c.value.metadata?.phone_number_id === phoneId,
+      )
+      .flatMap((c) => c.value.statuses ?? []),
+  );
 }

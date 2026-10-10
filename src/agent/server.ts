@@ -2,7 +2,12 @@ import { createServer, type IncomingMessage } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import type { AgentConfig } from "./config.ts";
 import type { AgentStore } from "./store.ts";
-import { inboundMessages, verifiedSignature } from "./whatsapp.ts";
+import {
+  inboundMessages,
+  verifiedSignature,
+  deliveryStatuses,
+  canonicalPhone,
+} from "./whatsapp.ts";
 
 async function rawBody(req: IncomingMessage) {
   const chunks: Buffer[] = [];
@@ -71,8 +76,9 @@ export function createAgentServer(
         send(401, "Invalid signature");
         return;
       }
+      const payload = JSON.parse(body.toString("utf8"));
       const messages = inboundMessages(
-        JSON.parse(body.toString("utf8")),
+        payload,
         config.WHATSAPP_PHONE_NUMBER_ID,
       );
       for (const m of messages) {
@@ -84,6 +90,21 @@ export function createAgentServer(
         )
           store.enqueue(m);
       }
+      for (const event of deliveryStatuses(
+        payload,
+        config.WHATSAPP_PHONE_NUMBER_ID,
+      ))
+        if (
+          config.WHATSAPP_ALLOWED_SENDERS.includes(
+            canonicalPhone(event.recipient_id),
+          )
+        )
+          store.delivery(
+            event.id,
+            event.status,
+            new Date(Number(event.timestamp) * 1000).toISOString(),
+            event.errors?.map((e) => String(e.code)).join(","),
+          );
       // Acknowledge only after durable storage; Gemini and Graph API run in the worker.
       send(200, "EVENT_RECEIVED");
     } catch (e) {

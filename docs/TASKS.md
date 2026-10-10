@@ -12,7 +12,13 @@
 | GitHub y documentación del nuevo alcance | Actualizados en rama StockRescue | Repositorio renombrado; históricos preservados; integración a main mediante PR |
 | Piloto con negocio y datos reales | Pendiente | Calidad de datos, uso recurrente y utilidad económica |
 | Usuarios, varias empresas, POS y producción | Fuera del MVP | Diseño y validación independientes |
-| Entorno Google AI Studio + WhatsApp Cloud API | Implementado en PR #3 sobre el MVP | Configuración, gateway, consultas, preview, confirmación y alertas; contratos probados sin credenciales. Conexión real pendiente de configurar Meta/Gemini; ver AGENT-INTEGRATION.md |
+| Google AI Studio + WhatsApp Cloud API | Integrados y verificados realmente | Modelo gemini-3.8-flash, chat y PDF por API, confirmación compartida y eventos entregado/leído |
+| Documentos y movimientos | Implementados, pruebas y recorrido real | Duplicados, conversiones, corrección y rollback |
+| Pronóstico y simulación | Implementados | Historial confirmado o supuestos explícitos, semilla y backtest temporal |
+| Recordatorios y resúmenes | Programador persistente activo | Reinicio conserva tareas; resumen de las 22:52:57 confirmado DELIVERED; primer envío incierto permanece REVIEW |
+| Plantilla Meta | Creada, PENDING | Esperar aprobación antes de acreditar avisos fuera de 24 horas |
+| Panel HTTPS, auth y demo | Operativos por Quick Tunnel | URL cambia al reiniciar; callback automático. Acceso del propietario en 1Password |
+| Inicio y recuperación | LaunchAgent instalado | Mac despierto, sesión y 1Password disponibles; una instancia con lease |
 
 Acordar archivos y responsables antes del trabajo paralelo. Actualizar documentos existentes, sin informes duplicados. El estado de implementación no acredita resultados de pruebas ni una compra remota: consultar [QA](QA.md) e [integración Reap](REAP-INTEGRATION.md).
 

@@ -20,14 +20,35 @@ export class AgentStore {
       UPDATE agent_jobs SET status='QUEUED' WHERE status='WORKING';
       UPDATE agent_jobs SET status='REVIEW' WHERE status='SENDING';
       UPDATE agent_alerts SET status='REVIEW' WHERE status='SENDING';`);
+    if (
+      !this.db
+        .prepare("PRAGMA table_info(agent_jobs)")
+        .all()
+        .some((c) => c.name === "media")
+    )
+      this.db.exec("ALTER TABLE agent_jobs ADD COLUMN media TEXT");
+    this.db.exec(
+      "CREATE TABLE IF NOT EXISTS agent_delivery (outbound_id TEXT NOT NULL, status TEXT NOT NULL, at TEXT NOT NULL, error TEXT, PRIMARY KEY(outbound_id,status))",
+    );
+  }
+  delivery(id: string, status: string, at: string, error?: string) {
+    this.db
+      .prepare("INSERT OR IGNORE INTO agent_delivery VALUES (?,?,?,?)")
+      .run(id, status, at, error ?? null);
   }
   enqueue(m: InboundMessage) {
     return (
       this.db
         .prepare(
-          "INSERT OR IGNORE INTO agent_jobs (id,sender,text,timestamp,status) VALUES (?,?,?,?,'QUEUED')",
+          "INSERT OR IGNORE INTO agent_jobs (id,sender,text,timestamp,status,media) VALUES (?,?,?,?,'QUEUED',?)",
         )
-        .run(m.id, m.from, m.text, m.timestamp).changes === 1
+        .run(
+          m.id,
+          m.from,
+          m.text,
+          m.timestamp,
+          m.media ? JSON.stringify(m.media) : null,
+        ).changes === 1
     );
   }
   claim(): Job | undefined {
@@ -35,7 +56,7 @@ export class AgentStore {
     try {
       const row = this.db
         .prepare(
-          "SELECT id, sender, text, timestamp, response FROM agent_jobs WHERE status IN ('QUEUED','READY') ORDER BY rowid LIMIT 1",
+          "SELECT id, sender, text, timestamp, response, media FROM agent_jobs WHERE status IN ('QUEUED','READY') ORDER BY rowid LIMIT 1",
         )
         .get() as
         | {
@@ -44,6 +65,7 @@ export class AgentStore {
             text: string;
             timestamp: number;
             response: string | null;
+            media: string | null;
           }
         | undefined;
       if (row)
@@ -51,7 +73,13 @@ export class AgentStore {
           .prepare("UPDATE agent_jobs SET status='WORKING' WHERE id=?")
           .run(row.id);
       this.db.exec("COMMIT");
-      return row ? { ...row, from: row.sender } : undefined;
+      return row
+        ? {
+            ...row,
+            from: row.sender,
+            media: row.media ? JSON.parse(row.media) : undefined,
+          }
+        : undefined;
     } catch (e) {
       this.db.exec("ROLLBACK");
       throw e;
