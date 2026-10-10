@@ -1,0 +1,17 @@
+{
+  "snapshot_utc": "2026-10-10T01:04:00.200688+00:00",
+  "files": [
+    {
+      "filename": "gtm.md",
+      "bytes": 11715,
+      "sha256": "287771f12162718ea808799f5691b2b1442f9690122dc644499e8fdfa39b5a6d",
+      "source_modified_utc": "2026-10-10T01:02:31.442370+00:00"
+    },
+    {
+      "filename": "pmf.md",
+      "bytes": 19101,
+      "sha256": "2cbbdf65b2be8dcabfe733ca83904f97fe6ae3ec5ef7b353a2e43a3be645e81a",
+      "source_modified_utc": "2026-10-10T01:03:13.621697+00:00"
+    }
+  ]
+}
