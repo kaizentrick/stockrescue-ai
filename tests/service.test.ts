@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { Store } from "../src/store.ts";
 import { Service } from "../src/service.ts";
@@ -139,6 +139,7 @@ test("expired quote and budget are checked server side", async () => {
   other.store.close();
 });
 test("timeout preserves reservation and replays same operation, even after reopening database", async () => {
+  mkdirSync(".tmp/codex", { recursive: true });
   const dir = mkdtempSync(join(".tmp/codex/", "stock-test-"));
   try {
     const path = join(dir, "state.sqlite");
