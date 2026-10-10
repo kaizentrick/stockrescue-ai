@@ -2,7 +2,7 @@
 
 ## Automatizada
 
-`npm run check`: ESLint + TypeScript estricto + 19 pruebas Node, sin fallos. Se ejecutaron con permiso para sockets loopback; el sandbox inicial bloqueaba `listen`, no era un fallo de lógica.
+`npm run check`: ESLint + TypeScript estricto + 21 pruebas Node, sin fallos. Se ejecutaron con permiso para sockets loopback; el sandbox inicial bloqueaba `listen`, no era un fallo de lógica.
 
 Cobertura: conexión directa/reutilización sin compra, accesorio incompatible, merchant no admitido, datos insuficientes, bloqueo de búsqueda innecesaria, presupuesto por puesto y global, aprobación invalidada, vencimiento, 12 checkouts concurrentes sin duplicar, reserva competida desde dos conexiones SQLite, timeout pendiente y reconciliación con misma clave, cancelación, fallos/expiración y nuevo intento, persistencia tras reinicio, snapshots e historial, reporte repetido, retorno falsificado, rechazo de origen externo y contrato del transporte Reap usando fetch falso.
 
@@ -24,6 +24,6 @@ Capturas y matrices en `artifacts/` local (excluidas del repositorio). No contie
 
 Matriz DOM de estado pendiente: 320, 390, 600, 759, 760, 761, 768, 900, 1024, 1440 y 1600 px. Sin overflow horizontal de página. Consulta pendiente y descarga JSON: 44 px en todos esos anchos. Tablas con scroll horizontal local. Capturas de cotización, pendiente, confirmado, información insuficiente y reutilización a anchos representativos.
 
-Tres revisores independientes: UX/contenido, UI/espaciado, responsive/accesibilidad/interacción. Hallazgos corregidos: estado operativo antes del diagnóstico histórico, recuperación tras pérdida de conexión, retirada de aprobación vencida, objetivo táctil de exportación y separación del título móvil. Revalidación final documentada al cerrar el PR.
+Tres revisores independientes: UX/contenido, UI/espaciado, responsive/accesibilidad/interacción. Hallazgos corregidos: estado operativo antes del diagnóstico histórico, recuperación tras pérdida de conexión, retirada de aprobación vencida, objetivo táctil de exportación y separación del título móvil. Revalidación de 9ff255e: los tres revisores cerraron los hallazgos observados, con 0 bloqueadores y 0 mayores abiertos. Las capturas finales verificadas son final-confirmed-wide.jpg (viewport 1440×1000), final-confirmed-mobile.jpg (390×844) y pending-fixed-390/1440. Los archivos antiguos confirmed-fixed-* estaban mal rotulados y no se usan como evidencia de ancho. network-loss-320.jpg acredita pérdida de conexión en composición de escritorio, no viewport 320.
 
-Límites: sin VoiceOver, dispositivos físicos, Chrome/Firefox ni garantía universal de compatibilidad. No se ha probado identidad corporativa, despliegue público ni operación productiva. No se afirma cumplimiento WCAG auditado integralmente. El analizador estático de diseño reportó 0 errores y 0 advertencias; complementa, no reemplaza, revisión visual.
+Límites: sin VoiceOver, dispositivos físicos, zoom de 200–400 %, Chrome/Firefox ni garantía universal de compatibilidad. No se ha probado identidad corporativa, despliegue público ni operación productiva. No se afirma cumplimiento WCAG auditado integralmente. El analizador estático de diseño reportó 0 errores y 0 advertencias; complementa, no reemplaza, revisión visual.

@@ -13,3 +13,7 @@ Fuente aportada por Nahum y verificada por el conector de lectura del hilo padre
 `src/merchant-directory.ts` conserva estos tres extractos con procedencia y hechos aún sin verificar. Los candidatos explícitos para destino México son Satechi y Dockcase; Anker SG es un caso de descarte por destino. `*` y `Unknown` no equivalen a envío universal.
 
 La UI sigue usando exclusivamente catálogo fixture y MXN sintéticos. La allowlist operativa real continúa vacía hasta validar IDs y respuesta API. No se incorporan precios de referencia a cotizaciones, no se hace conversión monetaria ni se afirma que un hub USB-C soporte el protocolo/resolución requeridos.
+
+## Presupuestos independientes
+
+Las referencias 44.99 USD y 109.99 USD superan el escenario previo de 40 USD descrito en el Space, incluso antes de envío e impuestos: ese escenario debe rechazarse. La demo local usa explícitamente otro fixture: límite por puesto configurable (500 MXN por defecto), total ficticio 337.84 MXN y presupuesto global 1.000 MXN. No convierte los precios de hoja ni altera aprobaciones. Ningún presupuesto sintético autoriza gasto real.

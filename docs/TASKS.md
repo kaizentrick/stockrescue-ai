@@ -2,7 +2,7 @@
 
 | Entregable | Estado | Responsable | Límite de archivos |
 |---|---|---|---|
-| Base, motor, persistencia, mock, adaptador Reap y primera UI | En curso | Codex | src/, public/, tests/, configuración |
+| Base, motor, persistencia, mock, adaptador Reap y primera UI | PR en borrador | Codex | src/, public/, tests/, configuración |
 | Recorrido UX y copy de recuperación | Disponible después del PR base | Por elegir | docs/UX-REVIEW.md inicialmente |
 | Pruebas exploratorias de demo | Disponible | Por elegir | docs/QA-MANUAL.md |
 | Hipótesis de comprador, entrevistas y caso comercial | Disponible | Por elegir | docs/BUSINESS.md |

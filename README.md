@@ -51,6 +51,7 @@ P-03 admite una variante de reporte sin protocolo conocido que bloquea compra. S
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Integración Reap y fuentes oficiales](docs/REAP-INTEGRATION.md)
 - [Guion de demo](docs/DEMO-SCRIPT.md)
-- [Dirección visual](docs/DESIGN.md)
+- [Dirección visual](docs/DESIGN.md) y [evidencia de QA](docs/QA.md)
+- [Referencias de merchants](docs/MERCHANTS.md)
 
 No se utiliza código, datos, diseños ni cuentas de producto de otros proyectos. Nombre comercial y demanda pagadora pendientes. La candidatura y el video los envía el usuario.
