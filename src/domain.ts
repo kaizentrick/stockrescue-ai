@@ -20,6 +20,12 @@ export type Workplace = {
   outputs: Port[];
   inputs: Port[];
   cable: string;
+  cableSpec?: {
+    input: "HDMI" | "USB-C";
+    output: "HDMI" | "USB-C";
+    protocol: "HDMI" | "DATA_ONLY" | "UNKNOWN";
+    maxHz4k: number;
+  };
   requiredHz4k: number;
 };
 export type Diagnosis = {
@@ -58,6 +64,7 @@ export type Audit = { at: string; event: string; detail: string };
 export type Operation = {
   key: string;
   createdAt: string;
+  mockOutcome?: "completed" | "timeout" | "failed" | "expired";
   quote: Quote;
   status: "PENDING" | "COMPLETED" | "FAILED" | "EXPIRED";
   checkoutId?: string;
@@ -92,6 +99,7 @@ export const workplaces: Workplace[] = [
     ],
     inputs: [{ connector: "HDMI", protocol: "HDMI", maxHz4k: 60 }],
     cable: "HDMI 2.0 · 4K/60 Hz",
+    cableSpec: { input: "HDMI", output: "HDMI", protocol: "HDMI", maxHz4k: 60 },
     requiredHz4k: 60,
   },
   {
@@ -102,6 +110,7 @@ export const workplaces: Workplace[] = [
     outputs: [{ connector: "USB-C", protocol: "DP_ALT", maxHz4k: 60 }],
     inputs: [{ connector: "HDMI", protocol: "HDMI", maxHz4k: 60 }],
     cable: "HDMI 2.0 · 4K/60 Hz",
+    cableSpec: { input: "HDMI", output: "HDMI", protocol: "HDMI", maxHz4k: 60 },
     requiredHz4k: 60,
   },
   {
@@ -112,6 +121,7 @@ export const workplaces: Workplace[] = [
     outputs: [{ connector: "USB-C", protocol: "DP_ALT", maxHz4k: 60 }],
     inputs: [{ connector: "HDMI", protocol: "HDMI", maxHz4k: 60 }],
     cable: "HDMI 2.0 · 4K/60 Hz",
+    cableSpec: { input: "HDMI", output: "HDMI", protocol: "HDMI", maxHz4k: 60 },
     requiredHz4k: 60,
   },
 ];
@@ -178,6 +188,16 @@ export const catalog: Product[] = [
     fixture: true,
   },
 ];
+export function usableHdmiCable(w: Workplace): boolean {
+  const cable = w.cableSpec;
+  return (
+    !!cable &&
+    cable.input === "HDMI" &&
+    cable.output === "HDMI" &&
+    cable.protocol === "HDMI" &&
+    cable.maxHz4k >= w.requiredHz4k
+  );
+}
 export function compatible(w: Workplace, a: Accessory): boolean {
   return (
     w.outputs.some(
@@ -193,7 +213,7 @@ export function compatible(w: Workplace, a: Accessory): boolean {
         p.maxHz4k >= w.requiredHz4k,
     ) &&
     a.maxHz4k >= w.requiredHz4k &&
-    !!w.cable
+    usableHdmiCable(w)
   );
 }
 export function diagnose(w: Workplace): Diagnosis {
@@ -204,13 +224,13 @@ export function diagnose(w: Workplace): Diagnosis {
     w.inputs.some(
       (p) => p.protocol === "HDMI" && p.maxHz4k >= w.requiredHz4k,
     ) &&
-    !!w.cable;
+    usableHdmiCable(w);
   const alternatives = [
     {
       name: "Conexión directa con cable existente",
       result: direct
         ? "Compatible: HDMI 2.0 a HDMI 2.0; 4K/60 Hz."
-        : "No hay salida HDMI documentada en el portátil.",
+        : "No hay una ruta HDMI directa completa que alcance la capacidad requerida.",
     },
     ...accessories.map((a) => ({
       name: a.id + " · " + a.name,
@@ -231,12 +251,12 @@ export function diagnose(w: Workplace): Diagnosis {
       ],
       alternatives,
     };
-  if (w.outputs.some((p) => p.protocol === "UNKNOWN") || !w.cable)
+  if (w.outputs.some((p) => p.protocol === "UNKNOWN") || !usableHdmiCable(w))
     return {
       decision: "NEEDS_INFO",
       title: "Falta información para decidir",
       reasons: [
-        "Confirma si USB-C soporta DisplayPort Alt Mode y 4K/60 Hz, y verifica el cable. La forma del conector no prueba capacidad de vídeo.",
+        "Verifica salida de vídeo, protocolo y cable: conectores HDMI en ambos extremos y capacidad 4K/60 Hz. Para USB-C confirma DisplayPort Alt Mode; la forma del conector no prueba vídeo. Si el cable es incompatible, documenta una ruta completa alternativa antes de cotizar.",
       ],
       alternatives,
     };

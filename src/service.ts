@@ -188,6 +188,7 @@ export class Service {
       c.operation = {
         key: randomUUID(),
         createdAt: new Date(this.now()).toISOString(),
+        mockOutcome: outcome,
         quote: structuredClone(c.quote),
         status: "PENDING",
         note: "Reserva atómica; esperando verificación del proveedor.",
@@ -204,12 +205,20 @@ export class Service {
     try {
       const result = await this.adapter.checkout(claim.c.operation!, outcome);
       return this.change(id, (c) => {
+        if (
+          c.operation?.key !== claim.c.operation!.key ||
+          c.operation.status !== "PENDING"
+        )
+          return;
         c.operation = result;
         this.audit(c, "CHECKOUT_" + result.status, result.note);
       });
     } catch {
       return this.change(id, (c) => {
-        if (c.operation?.status === "PENDING") {
+        if (
+          c.operation?.status === "PENDING" &&
+          c.operation.key === claim.c.operation!.key
+        ) {
           c.operation.note =
             "Timeout: estado pendiente de verificación. Consulta el mismo intento; reserva conservada.";
           this.audit(c, "PENDING", c.operation.note);
@@ -217,11 +226,32 @@ export class Service {
       });
     }
   }
-  reconcile(id: string) {
+  async reconcile(id: string): Promise<Case> {
+    const original = this.store.get(id);
+    const operation = original.operation;
+    if (!operation) throw new Error("No hay intento para consultar.");
+    if (operation.status !== "PENDING") return original;
+    let result = this.adapter.lookup(operation.key);
+    if (!result) {
+      // Crash before provider acceptance: explicitly replay the persisted mock
+      // operation, without a new key, changed quote or additional reservation.
+      // This local mock has durable idempotency without a retention limit.
+      try {
+        result = await this.adapter.checkout(
+          operation,
+          operation.mockOutcome ?? "completed",
+        );
+      } catch {
+        result = this.adapter.lookup(operation.key);
+      }
+    }
     return this.change(id, (c) => {
-      if (!c.operation) throw new Error("No hay intento para consultar.");
-      if (c.operation.status !== "PENDING") return;
-      const result = this.adapter.lookup(c.operation.key);
+      // An older asynchronous response may not overwrite a newer attempt.
+      if (
+        c.operation?.key !== operation.key ||
+        c.operation.status !== "PENDING"
+      )
+        return;
       if (result) {
         c.operation = result;
         this.audit(c, "RECONCILED", result.note);
@@ -229,7 +259,7 @@ export class Service {
         this.audit(
           c,
           "PENDING",
-          "Sin resultado verificable. Se conserva la reserva; no se crea otra compra.",
+          "Sin resultado verificable. Misma operación y reserva; no se crea otra compra.",
         );
     });
   }

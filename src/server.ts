@@ -96,7 +96,7 @@ export function createApp(service: Service) {
             c = service.approve(id, b.hash);
           } else if (action === "retry") c = service.retry(id);
           else if (action === "cancel") c = service.cancel(id);
-          else if (action === "reconcile") c = service.reconcile(id);
+          else if (action === "reconcile") c = await service.reconcile(id);
           else {
             const outcome = String(b.outcome || "completed");
             if (

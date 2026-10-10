@@ -99,7 +99,7 @@ test("timeout conserva pendiente, reserva y mismo intento; consulta confirma", a
   const key = pending.operation?.key;
   await s.checkout(id);
   assert.equal(s.adapter.calls, 1);
-  assert.equal(s.reconcile(id).operation?.key, key);
+  assert.equal((await s.reconcile(id)).operation?.key, key);
   assert.equal(s.store.get(id).operation?.status, "COMPLETED");
 });
 test("cancelación antes de checkout no compra; pendiente no cancela", async () => {
@@ -137,7 +137,7 @@ test("persistencia tras reinicio conserva resultado e idempotencia", async () =>
     a.store.close();
     const b = new Service(new Store(path));
     assert.equal(b.store.get(id).operation?.status, "PENDING");
-    assert.equal(b.reconcile(id).operation?.key, key);
+    assert.equal((await b.reconcile(id)).operation?.key, key);
     assert.equal(b.store.get(id).operation?.status, "COMPLETED");
     b.store.close();
   } finally {
@@ -185,4 +185,49 @@ test("historial retiene snapshots, aprobaciones e intentos fallidos", async () =
   c = s.store.get(id);
   assert.equal(c.attempts?.[0].status, "FAILED");
   assert.equal(c.approvalHistory?.length, 2);
+});
+test("crash before provider acceptance recovers same operation after restart and concurrent queries", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "reap-crash-")),
+    path = join(dir, "state.sqlite");
+  try {
+    const a = new Service(new Store(path)),
+      id = ready(a);
+    a.adapter.checkout = async () => {
+      throw new Error("crash-before-acceptance");
+    };
+    await a.checkout(id);
+    const original = a.store.get(id).operation!;
+    assert.equal(
+      a.store.db.prepare("SELECT count(*) AS n FROM mock_orders").get()?.n,
+      0,
+    );
+    a.store.close();
+    const b = new Service(new Store(path));
+    await Promise.all([b.reconcile(id), b.reconcile(id)]);
+    assert.equal(b.adapter.calls, 1);
+    assert.equal(b.store.get(id).operation?.key, original.key);
+    assert.equal(b.store.get(id).operation?.status, "COMPLETED");
+    assert.deepEqual(b.store.get(id).operation?.quote, original.quote);
+    b.store.close();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+test("unknown or insufficient cable cannot establish a compatible video chain", () => {
+  const slow = structuredClone(workplaces[0]);
+  slow.cable = "HDMI 1.4 · 4K/30";
+  slow.cableSpec!.maxHz4k = 30;
+  assert.notEqual(diagnose(slow).decision, "NO_PURCHASE");
+  const charging = structuredClone(workplaces[1]);
+  charging.cable = "USB-C charge only";
+  charging.cableSpec = {
+    input: "USB-C",
+    output: "USB-C",
+    protocol: "DATA_ONLY",
+    maxHz4k: 0,
+  };
+  assert.equal(compatible(charging, accessories[0]), false);
+  assert.equal(diagnose(charging).decision, "NEEDS_INFO");
+  delete charging.cableSpec;
+  assert.equal(diagnose(charging).decision, "NEEDS_INFO");
 });
