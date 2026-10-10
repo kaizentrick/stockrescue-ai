@@ -40,9 +40,9 @@ Límites: texto al 200 % se simuló duplicando tamaños computados; no equivale 
 
 ## Sandbox real
 
-Con la credencial del evento se verificaron búsqueda/detalle, variante y cotización de una bolsa de café por **$360 MXN**, y creación/consulta de enrollment EXTERNAL. Se revisó y aprobó una cotización desde la UI; intentar enviar sin enrollment activo produjo rechazo en servidor, sin crear operación, pedido ni aumentar existencias.
+Con la credencial del evento se verificaron búsqueda/detalle, variante y cotización de una bolsa de café por **$360 MXN**. El control inicial rechazó checkout sin enrollment activo. El reintento posterior en Safari convencional, tarjeta oficial distinta, OTP y passkey completada por el usuario llegó a **ACTIVE**, verificado por GET. Cinco solicitudes de revocación de registros anteriores devolvieron 409 ENROLLMENT_NOT_ACTIVE; cuatro estaban EXPIRED y uno FAILED, todos sin tarjeta capturada.
 
-**El flujo remoto completo sigue bloqueado**: la autenticación Visa alojada respondió 403 y el enrollment permanece REQUIRES_ACTION. No hay checkout COMPLETED ni orderId sandbox. La simulación local aprobada por los tests no sustituye esta evidencia. Detalles y referencias no secretas en [REAP-INTEGRATION.md](REAP-INTEGRATION.md).
+Desde la UI se obtuvo una cotización nueva, se aprobó el total y se creó un único checkout con simulación. La aprobación alojada requirió otra verificación de passkey; después, GET devolvió **PROCESSING**, `orderId` y `finalAmount` de $360 MXN, sin nextAction. **Todavía no se declara COMPLETED**. Se conserva la reserva y se consulta el mismo intento; el inventario no aumenta por la autorización. El 403 del enrollment anterior es evidencia histórica, no el estado del registro nuevo. Detalles, horas y referencias no secretas en [REAP-INTEGRATION.md](REAP-INTEGRATION.md).
 
 El lanzador `npm run sandbox` fue probado con 1Password CLI: servidor iniciado en 127.0.0.1:4317, sin llave en argumentos, archivos ni salida. La práctica de revisión quedó en el puerto 4319 con su base independiente.
 

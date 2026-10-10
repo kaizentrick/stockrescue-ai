@@ -2,7 +2,7 @@
 
 El alcance actual es **reposición supervisada de inventario**, descrito en [README.md](../README.md). Se reutilizan persistencia, aprobación vinculada a evidencia, presupuesto e idempotencia de Reap Workplace Agent; se reemplaza el caso de pantallas y accesorios por una tienda, inventario, propuestas y recepción.
 
-La implementación se desarrolla en `cx/stockrescue-mvp`. El caso principal es café Blend Station de la lista del evento; vasos y filtros usan el mismo motor con ejecución bloqueada por ausencia de proveedor. El código incluye práctica y adaptador sandbox. Se verificaron catálogo y cotización de una bolsa; la compra completa sigue bloqueada en la autenticación hospedada del enrollment. Evidencia remota y bloqueos están en [REAP-INTEGRATION.md](REAP-INTEGRATION.md), separados de la existencia del código.
+La implementación se desarrolla en `cx/stockrescue-mvp`. El caso principal es café Blend Station de la lista del evento; vasos y filtros usan el mismo motor con ejecución bloqueada por ausencia de proveedor. El código incluye práctica y adaptador sandbox. Se verificaron catálogo, cotización de una bolsa, enrollment ACTIVE y autorización del checkout simulado. Reap mantiene ese checkout en PROCESSING: todavía no hay confirmación COMPLETED. Evidencia remota y siguiente consulta están en [REAP-INTEGRATION.md](REAP-INTEGRATION.md), separados de la existencia del código.
 
 ## Históricos
 
