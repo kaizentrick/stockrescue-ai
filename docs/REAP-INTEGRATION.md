@@ -8,6 +8,26 @@ Consultado el 10 de octubre de 2026. La aplicación servida es una **simulación
 
 El transporte exige una clave de idempotencia al llamador para cada POST. El servicio mock persiste claves antes del envío y usa reserva atómica SQLite. El transporte Reap no activa automáticamente el servicio mock: conectar un adaptador externo requiere completar el mapeo y las comprobaciones siguientes. Tener métodos de transporte **no equivale a integración verificada**.
 
+## Ejecutor acotado de catálogo
+
+`createCatalogSandboxExecutor(apiKey)` crea una capacidad inmutable con únicamente `search`, `details` y `variant`. Construirla no lee archivos ni variables de entorno y no envía solicitudes. La entrada persistente y el uso de la credencial requieren autorización específica. El usuario autorizó ese alcance de catálogo; el valor debe introducirlo personalmente en el archivo local ignorado y confirmar que terminó antes de cargarlo. Esta restricción no activa la integración ni acredita una llamada real.
+
+La prueba de catálogo solo admite:
+
+| Método | Ruta literal |
+|---|---|
+| POST | `/agentic/products/search` |
+| POST | `/agentic/products/details` |
+| POST | `/agentic/products/variant` |
+
+Destino fijo: `https://sg.sandbox.api.reap.global`, HTTPS y puerto estándar. No se acepta URL/base configurable. Se rechazan antes de construir cabeceras o llamar al transporte otros métodos, rutas de enrollment/quote/checkout, URLs absolutas, hosts alternativos, query/fragmento, rutas escapadas y segmentos de navegación. No se permite cabecera de simulación en catálogo. Cada operación exige la clave de idempotencia del llamador.
+
+Fetch usa `redirect: error`. También se rechazan respuestas 3xx, marcadas como redirigidas o cuya URL no coincide con la solicitada, incluso ante un transporte de prueba que ignore esa opción. Los errores no imprimen la clave, headers, cuerpo ni destino suministrado.
+
+El adaptador general también adopta alcance `catalog` por defecto y copia su configuración para impedir ampliación por mutación externa. Su scaffold de pagos exige `mode: payments` explícito y conserva una lista cerrada de rutas; este modo sigue desconectado de la aplicación, no está autorizado por el permiso de catálogo y no es integración comprobada. El ejecutor de catálogo no expone ese selector ni el método genérico de transporte.
+
+Las pruebas utilizan exclusivamente credenciales ficticias y fetch falso. Esta restricción es del código cliente; no equivale a restringir permisos de la API key en Reap ni evita que otro programa con acceso al archivo use la credencial.
+
 ## Pendiente antes de activar tráfico Reap
 
 1. El usuario debe autorizar específicamente configuración persistente y aportar `REAP_API_KEY` por entrada segura. No leerla del correo ni pegarla en chat, logs o commits. `.env.example` mantiene campos vacíos. No hay provisión automática ni creación de llaves.

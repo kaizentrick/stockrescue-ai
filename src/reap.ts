@@ -2,11 +2,23 @@
  * Activation requires a separately approved credential and verified merchant allowlist.
  * No cards, mandate endpoints or externalCheckout are accepted here.
  */
-export type ReapConfig = {
+type PaymentConfig = {
   apiKey: string;
+  mode: "payments";
   returnUrl: string;
   allowedMerchantIds: string[];
   hostedActionHosts: string[];
+};
+export type ReapConfig = { apiKey: string; mode?: "catalog" } | PaymentConfig;
+const SANDBOX_ORIGIN = "https://sg.sandbox.api.reap.global";
+const CATALOG_PATHS = new Set([
+  "/agentic/products/search",
+  "/agentic/products/details",
+  "/agentic/products/variant",
+]);
+const PAYMENT_PATHS = {
+  GET: /^\/agentic\/(enrollments|quotes|checkouts)\/[A-Za-z0-9_-]+$/,
+  POST: /^\/agentic\/(enrollments|quotes|checkouts)$|^\/agentic\/quotes\/[A-Za-z0-9_-]+\/shipping-option$/,
 };
 export type ShippingAddress = {
   firstName: string;
@@ -29,16 +41,33 @@ export type ReapCheckout = {
 export class ReapSandboxAdapter {
   #config: ReapConfig;
   #fetch: typeof fetch;
-  static readonly base = "https://sg.sandbox.api.reap.global";
+  static get base() {
+    return SANDBOX_ORIGIN;
+  }
   constructor(config: ReapConfig, transport: typeof fetch = fetch) {
-    if (!config.apiKey || !config.allowedMerchantIds.length)
+    if (!config.apiKey)
+      throw new Error(
+        "Sandbox sin configurar: requiere credencial autorizada.",
+      );
+    if (config.mode && !["catalog", "payments"].includes(config.mode))
+      throw new Error("Modo sandbox no permitido.");
+    if (config.mode === "payments" && !config.allowedMerchantIds.length)
       throw new Error(
         "Sandbox sin configurar: requiere credencial autorizada y merchants verificados.",
       );
-    if (new URL(config.returnUrl).protocol !== "https:")
+    if (
+      config.mode === "payments" &&
+      new URL(config.returnUrl).protocol !== "https:"
+    )
       throw new Error("Reap requiere retorno HTTPS.");
-    this.#config = config;
+    // Copy configuration so the caller cannot widen this instance's scope later.
+    this.#config = structuredClone(config);
     this.#fetch = transport;
+  }
+  #paymentConfig(): PaymentConfig {
+    if (this.#config.mode !== "payments")
+      throw new Error("REAP_SCOPE_BLOCKED: el ejecutor solo permite catálogo.");
+    return this.#config;
   }
   async request<T>(
     path: string,
@@ -47,6 +76,29 @@ export class ReapSandboxAdapter {
     key?: string,
     simulate = false,
   ): Promise<T> {
+    // Check raw paths before URL normalization, headers or transport. No absolute
+    // URLs, queries, escaped paths, dot segments or alternate hosts are accepted.
+    const catalog = method === "POST" && CATALOG_PATHS.has(path);
+    const payment =
+      this.#config.mode === "payments" &&
+      (method === "GET" || method === "POST") &&
+      PAYMENT_PATHS[method].test(path);
+    if (
+      (!catalog && !payment) ||
+      (simulate &&
+        !(payment && method === "POST" && path === "/agentic/checkouts"))
+    )
+      throw new Error("REAP_SCOPE_BLOCKED: método o ruta no permitidos.");
+    const target = new URL(path, SANDBOX_ORIGIN);
+    if (
+      target.origin !== SANDBOX_ORIGIN ||
+      target.pathname !== path ||
+      target.search ||
+      target.hash ||
+      target.username ||
+      target.password
+    )
+      throw new Error("REAP_DESTINATION_BLOCKED: destino no permitido.");
     if (method === "POST" && !key)
       throw new Error(
         "Persiste una Idempotency-Key por operación antes de enviar.",
@@ -60,7 +112,7 @@ export class ReapSandboxAdapter {
     if (simulate) headers["X-Simulate-Checkout"] = "COMPLETED";
     let response: Response;
     try {
-      response = await this.#fetch(ReapSandboxAdapter.base + path, {
+      response = await this.#fetch(target.href, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
@@ -72,6 +124,16 @@ export class ReapSandboxAdapter {
         "REAP_OUTCOME_UNKNOWN: conserva operación y reserva; no generes otra compra.",
       );
     }
+    // Native fetch rejects redirects above. Also fail closed for injected
+    // transports that return a redirect or an already-redirected response.
+    if (
+      response.redirected ||
+      (response.status >= 300 && response.status < 400) ||
+      (response.url && response.url !== target.href)
+    )
+      throw new Error(
+        "REAP_REDIRECT_BLOCKED: respuesta fuera del destino autorizado.",
+      );
     if (!response.ok)
       throw new Error(
         `REAP_HTTP_${response.status}: consultar política de recuperación sin registrar cuerpos ni headers.`,
@@ -79,6 +141,7 @@ export class ReapSandboxAdapter {
     return (await response.json()) as T;
   }
   enrollment(owner: { id: string; email: string }, key: string) {
+    const config = this.#paymentConfig();
     return this.request<{
       id: string;
       status: string;
@@ -89,7 +152,7 @@ export class ReapSandboxAdapter {
       {
         source: "EXTERNAL",
         owner: { type: "CLIENT_REFERENCE", ...owner },
-        presentation: { type: "REDIRECT", returnUrl: this.#config.returnUrl },
+        presentation: { type: "REDIRECT", returnUrl: config.returnUrl },
       },
       key,
     );
@@ -138,7 +201,7 @@ export class ReapSandboxAdapter {
     },
     key: string,
   ) {
-    if (!this.#config.allowedMerchantIds.includes(input.merchantId))
+    if (!this.#paymentConfig().allowedMerchantIds.includes(input.merchantId))
       throw new Error("Merchant no admitido.");
     return this.request<unknown>(
       "/agentic/quotes",
@@ -170,6 +233,7 @@ export class ReapSandboxAdapter {
     enrollmentId: string,
     key: string,
   ): Promise<ReapCheckout> {
+    const config = this.#paymentConfig();
     const enrollment = await this.getEnrollment(enrollmentId);
     if (enrollment.status !== "ACTIVE")
       throw new Error("Enrollment no ACTIVE.");
@@ -179,7 +243,7 @@ export class ReapSandboxAdapter {
       {
         quoteId,
         enrollmentId,
-        presentation: { type: "REDIRECT", returnUrl: this.#config.returnUrl },
+        presentation: { type: "REDIRECT", returnUrl: config.returnUrl },
       },
       key,
       true,
@@ -192,12 +256,34 @@ export class ReapSandboxAdapter {
     );
   }
   hostedUrl(url: string) {
+    const config = this.#paymentConfig();
     const u = new URL(url);
     if (
       u.protocol !== "https:" ||
-      !this.#config.hostedActionHosts.includes(u.hostname)
+      !config.hostedActionHosts.includes(u.hostname)
     )
       throw new Error("Destino alojado no verificado.");
     return u.toString();
   }
+}
+
+/** Capability-limited executor for the separately authorized catalog trial.
+ * Construction never reads environment/files or makes a request. No enrollment,
+ * quote, payment, generic request or hosted-navigation method is exposed.
+ */
+export function createCatalogSandboxExecutor(
+  apiKey: string,
+  transport: typeof fetch = fetch,
+) {
+  const adapter = new ReapSandboxAdapter(
+    { apiKey, mode: "catalog" },
+    transport,
+  );
+  return Object.freeze({
+    search: (query: string, key: string) => adapter.search(query, key),
+    details: (productIds: string[], key: string) =>
+      adapter.details(productIds, key),
+    variant: (productId: string, optionIds: string[], key: string) =>
+      adapter.variant(productId, optionIds, key),
+  });
 }

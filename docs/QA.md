@@ -2,7 +2,7 @@
 
 ## Automatizada
 
-`npm run check`: ESLint + TypeScript estricto + 24 pruebas Node, sin fallos. Se ejecutaron con permiso para sockets loopback; el sandbox inicial bloqueaba `listen`, no era un fallo de lógica.
+`npm run check`: ESLint + TypeScript estricto + 29 pruebas Node, sin fallos. Se ejecutaron con permiso para sockets loopback; el sandbox inicial bloqueaba `listen`, no era un fallo de lógica. `npm run build` y `git diff --check` también pasan.
 
 Cobertura: conexión directa/reutilización sin compra, accesorio incompatible, merchant no admitido, datos insuficientes, bloqueo de búsqueda innecesaria, presupuesto por puesto y global, aprobación invalidada, vencimiento, 12 checkouts concurrentes sin duplicar, reserva competida desde dos conexiones SQLite, timeout pendiente y reconciliación con misma clave, cancelación, fallos/expiración y nuevo intento, persistencia tras reinicio, snapshots e historial, reporte repetido, retorno falsificado, rechazo de origen externo y contrato del transporte Reap usando fetch falso.
 
@@ -11,6 +11,16 @@ No se llamó a Reap ni se usó una credencial. Los tests del transporte no prueb
 Regresiones adicionales: interrupción entre reserva y envío recuperada con la misma clave; cable sin protocolo/capacidad suficiente nunca aceptado por su nombre; aprobación invalidada al cambiar hardware o evidencia del diagnóstico.
 
 Revisión independiente de fiabilidad sobre 8e26a0e: ambos hallazgos cerrados y enlace aprobación/evidencia revalidado; 23 pruebas sin HTTP más comprobación adicional de cambio de diagnóstico. Sin bloqueadores ni mayores nuevos dentro del MVP local. El coordinador ejecutó la suite completa de 24, incluida HTTP.
+
+Cinco pruebas posteriores cubren el ejecutor de catálogo: capacidad limitada a tres operaciones, rechazo de métodos/rutas fuera de alcance, host/URLs alternativos, redirecciones 301/302/303/307/308 y respuestas ya redirigidas, y configuración externa que intenta ampliar el alcance. No usan red ni una clave real.
+
+Revisión independiente del aislamiento de catálogo: 7/7 pruebas del transporte y diff limpio, sin bypass concreto ni bloqueadores en el alcance revisado. No acredita integración real.
+
+## CI
+
+No hay CI configurada. Verificación remota sobre `1b4d20011ce9726213d8fabe99010ff30ed67c12`: cero workflows, ejecuciones, check runs y commit statuses. El agregado vacío `pending` no es una ejecución. Las comprobaciones de este documento son locales.
+
+Propuesta opcional, no aplicada: workflow de PR con permisos `contents: read`, Node 24 y `npm ci`/`npm run check`/`npm run build`, sin secretos, deploy ni `pull_request_target`. Antes de configurarlo, confirmar disponibilidad de minutos incluidos y evitar cargos; no se modificaron permisos ni facturación.
 
 ## Interfaz local
 
