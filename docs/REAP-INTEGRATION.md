@@ -11,7 +11,7 @@ El transporte exige una clave de idempotencia al llamador para cada POST. El ser
 ## Pendiente antes de activar tráfico Reap
 
 1. El usuario debe autorizar específicamente configuración persistente y aportar `REAP_API_KEY` por entrada segura. No leerla del correo ni pegarla en chat, logs o commits. `.env.example` mantiene campos vacíos. No hay provisión automática ni creación de llaves.
-2. Confirmar lista real del bot `/merchants`, identificadores, país, moneda y disponibilidad para esta integración. No se presupone Shopify ni otra plataforma. `fixture-office` es inventado y no se debe enviar a Reap.
+2. La lista oficial fue aportada y verificada por el hilo padre; ver MERCHANTS.md. Confirmar aún identificadores API, país, moneda y disponibilidad para esta integración. No se presupone Shopify ni otra plataforma. `fixture-office` es inventado y no se debe enviar a Reap.
 3. Configurar retorno HTTPS y hosts alojados verificados. El enrollment debe ser EXTERNAL; los datos de tarjeta se introducen únicamente en la página alojada por Reap. Esta tarea no prueba tarjetas ni crea cuentas.
 4. Mapear respuestas reales de producto/variante a capacidad de vídeo respaldada por evidencia del fabricante; no deducir protocolo de un título de catálogo. Aplicar allowlist al merchant realmente asociado a esa variante, no al texto suministrado por el cliente.
 5. Mapear cotización y `shippingOptions` seleccionada: mostrar `amountBreakdown.finalAmount`, moneda y `expiresAt`; registrar dirección y opción de envío dentro del snapshot. No sumar nuevamente impuestos ya incluidos. El mock usa centavos enteros; la API devuelve cantidades monetarias en unidades mayores, que requieren conversión decimal exacta.
