@@ -16,7 +16,7 @@
 | Documentos y movimientos | Implementados, pruebas y recorrido real | Duplicados, conversiones, corrección y rollback |
 | Pronóstico y simulación | Implementados | Historial confirmado o supuestos explícitos, semilla y backtest temporal |
 | Recordatorios y resúmenes | Programador persistente activo | Reinicio conserva tareas; resumen de las 22:52:57 confirmado DELIVERED; primer envío incierto permanece REVIEW |
-| Plantilla Meta | Creada, PENDING | Esperar aprobación antes de acreditar avisos fuera de 24 horas |
+| Plantilla Meta | APPROVED, reclasificada MARKETING por Meta | Envío de plantilla confirmado DELIVERED en el número autorizado; revisar categoría antes de ampliar uso |
 | Panel HTTPS, auth y demo | Operativos por Quick Tunnel | URL cambia al reiniciar; callback automático. Acceso del propietario en 1Password |
 | Inicio y recuperación | LaunchAgent instalado | Mac despierto, sesión y 1Password disponibles; una instancia con lease |
 

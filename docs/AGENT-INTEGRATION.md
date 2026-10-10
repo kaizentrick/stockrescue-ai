@@ -33,12 +33,12 @@ Configuración no secreta local: `.data/service.json` con `{"metaConfigured":tru
 | Único destinatario autorizado | +52 55 3373 4608 |
 | Versión Graph | v26.0 |
 | Suscripción | whatsapp_business_account / messages, activa |
-| Plantilla | stockrescue_notification · es_MX · UTILITY |
+| Plantilla | stockrescue_notification · es_MX · APPROVED, categoría MARKETING asignada por Meta |
 | ID de plantilla | `2260490044523058` |
 
 El negocio ofreció su WABA de prueba. Se comprobó que no estaba suscrita a Cenlo; se añadió únicamente la app StockRescue, conservando la aplicación interna de Meta ya suscrita. Las apps de Cenlo no se modificaron. El número descartado no se utilizó para ningún envío. Se normaliza `521` a `52` para el mismo número móvil mexicano, sin ampliar la lista de destinatarios.
 
-La plantilla propia está **PENDING** de aprobación de Meta en la última consulta. Contiene cuatro parámetros para servicio, estado, detalle y acción pendiente. Mientras no esté aprobada, los avisos fuera de la ventana de 24 horas no se consideran entregados: quedan REVIEW si Meta rechaza el envío. Dentro de la ventana se envía texto; stock bajo y el resumen programado se comprueban por eventos, no por HTTP 200.
+La plantilla propia está **APPROVED**. Se solicitó como UTILITY y Meta la reclasificó como **MARKETING**; no se presenta como plantilla utility. Contiene cuatro parámetros para servicio, estado, detalle y acción pendiente. Se probó un envío real mediante plantilla al único número autorizado: apareció en Aside y Meta confirmó DELIVERED. La prueba se realizó dentro de la ventana activa; no acredita una prueba transcurridas 24 horas. Fuera de esa ventana el worker utiliza la plantilla aprobada; cualquier rechazo o respuesta incierta queda REVIEW. La clasificación debe revisarse antes de ampliar el uso más allá de este número de prueba.
 
 El token se intercambió por uno de larga duración: Meta devolvió `expires_in=5183999`, aproximadamente 60 días desde el 9 de octubre por la noche. La vigencia no es permanente y debe renovarse antes de caducar. La app y el número continúan siendo de prueba; no se afirma habilitación productiva ni capacidad de enviar a otros números.
 
@@ -70,7 +70,7 @@ La cola deduplica los IDs entrantes. Se persiste la respuesta antes de enviar y 
 
 El Quick Tunnel cambia de dirección al reiniciar su supervisor. `npm run service -- status` muestra la última URL; comprobar `/health`. El lanzador registra `/webhooks/whatsapp` en la misma app y vuelve a suscribir su WABA. Se verificó el cambio real de callback después del reinicio. Si falla, detener el servicio, ejecutar `npm run mvp:public` en primer plano, desbloquear 1Password y revisar la credencial/callback; los errores no imprimen secretos. Volver a iniciar el servicio después de detener la ejecución manual.
 
-Pruebas y límites comprobados: [QA](QA.md). No se afirma precisión comercial del pronóstico, continuidad con el Mac dormido, compra COMPLETED ni aprobación de plantilla pendiente.
+Pruebas y límites comprobados: [QA](QA.md). No se afirma precisión comercial del pronóstico, continuidad con el Mac dormido, compra COMPLETED ni habilitación productiva.
 
 ## Contratos de referencia
 

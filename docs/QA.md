@@ -15,7 +15,7 @@ Validación integrada del 9 de octubre de 2026 (CDMX), macOS, Node 26.8.2. Se di
 - Resumen de las 22:40 CDMX sobrevivió al reinicio y se calculó con el inventario vigente, pero el envío quedó REVIEW sin ID confirmado. Se conserva para revisión, sin reintento ciego.
 - Segundo resumen, programado desde lenguaje natural en WhatsApp para las 22:52:57 CDMX: se confirmó con código, permaneció SCHEDULED hasta la hora correcta y luego Meta confirmó DELIVERED (`wamid.HBgNNTIxNTUzMzczNDYwOBUCABEYEkMzM0VCRDI2Nzc3MkQ1MjY2MwA=`); visible en Aside. El primer envío incierto permanece REVIEW.
 - HTTPS público: /health 200, /api/bootstrap 401 sin sesión, /demo 200, webhook GET inválido 403; sesión de propietario permitió leer el panel. Meta verificó externamente el challenge y envió eventos firmados. El lector web de Codex no pudo abrir el Quick Tunnel; las pruebas HTTPS desde Aside/HTTP y las llamadas externas de Meta sí funcionaron.
-- Plantilla stockrescue_notification es_MX: creada como UTILITY; PENDING en última consulta. Token renovado con vigencia aproximada de 60 días. No se acredita entrega fuera de la ventana de atención mientras la plantilla no esté aprobada.
+- Plantilla stockrescue_notification es_MX: solicitada como UTILITY y aprobada por Meta como MARKETING. Un envío mediante la plantilla fue visible en Aside y confirmado DELIVERED. Se probó dentro de la ventana activa, sin afirmar una espera real de 24 horas. Token renovado con vigencia aproximada de 60 días.
 
 Los IDs salientes reales se conservan en la cola SQLite y sus eventos de entrega/lectura se relacionan en la pantalla Agente y avisos. Las bases y mensajes privados no se publican en Git.
 
