@@ -276,6 +276,14 @@ test("quote remains within a narrow viewport when text sizes are doubled", async
     content: document.documentElement.scrollWidth,
   }));
   expect(geometry.content).toBeLessThanOrEqual(geometry.viewport + 1);
+  const wideFont = await page.evaluate(() => {
+    document.documentElement.style.fontFamily = "Verdana, sans-serif";
+    return {
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    };
+  });
+  expect(wideFont.content).toBeLessThanOrEqual(wideFont.viewport + 1);
   const approval = page.getByRole("button", { name: /Revisar y aprobar/ });
   await expect(approval).toBeVisible();
   const bounds = await approval.boundingBox();

@@ -145,7 +145,8 @@ small,
   font-weight: 740;
   text-decoration: none;
   letter-spacing: -0.8px;
-  white-space: nowrap;
+  white-space: normal;
+  max-width: 100%;
 }
 .wordmark span {
   display: block;
