@@ -11,3 +11,5 @@ Todo el inventario y catálogo de demostración es sintético. No contiene códi
 ## Documentación compartida
 
 [Índice completo del Space](docs/space/README.md): 8 páginas y anexo con 152 merchants, exportados íntegramente con fuentes, fechas y SHA-256. Los textos son una instantánea y conservan el estado aprobado/propuesto de su fecha. [Estado de implementación posterior](docs/SPACE-STATUS.md).
+
+[Revisiones completas de GTM y PMF](docs/reviews/README.md), con hipótesis y límites preservados. No son validación de demanda.
