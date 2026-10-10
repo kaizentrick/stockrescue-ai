@@ -47,6 +47,7 @@ const access = new Access(
 );
 const app = createApp(service, process.env.STOCKRESCUE_ORIGIN, {
   access,
+  publicDemo: true,
   operations: ops,
   agent,
   webhook,

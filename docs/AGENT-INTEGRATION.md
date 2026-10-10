@@ -4,7 +4,7 @@ Verificación real del 9 de octubre de 2026 (CDMX). La base de [PR #3](https://g
 
 ## Ejecución y credenciales
 
-El proceso unificado `src/mvp.ts` sirve en `127.0.0.1:4321`. El panel requiere autenticación; `/demo` es público y usa datos simulados independientes. `/webhooks/whatsapp` es público con challenge y firma HMAC. El supervisor `src/launch.ts` lee mediante **1Password CLI**, captura los secretos en memoria, inicia el servidor y Cloudflare y actualiza la suscripción de la app cuando cambia la URL.
+El proceso unificado `src/mvp.ts` sirve en `127.0.0.1:4321`. Sin sesión, la raíz abre `/demo/`, un recorrido completo y público con datos simulados independientes por visitante. La operación conectada se abre por `/login` y requiere autenticación. Para otro Mac, `npm run demo:public` sirve una práctica sin credenciales en 4322; no altera el webhook ni inicia el worker conectado. `/webhooks/whatsapp` es público con challenge y firma HMAC. El supervisor `src/launch.ts` lee mediante **1Password CLI**, captura los secretos en memoria, inicia el servidor y Cloudflare y actualiza la suscripción de la app cuando cambia la URL.
 
 ```sh
 npm run service -- status

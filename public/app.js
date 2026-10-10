@@ -18,6 +18,9 @@ const date = (v) =>
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(v));
+const receiptPrefix = location.pathname.startsWith("/demo/")
+  ? "stockrescue-demo-receipt-"
+  : "stockrescue-receipt-";
 let state,
   selected = "CAFE-250",
   view = "inventory",
@@ -38,17 +41,20 @@ function notify(text, error = false) {
   if (error) $("#notice").hidden = true;
 }
 async function api(path, data) {
-  const response = await fetch(path, {
-    method: data === undefined ? "GET" : "POST",
-    headers:
-      data === undefined
-        ? {}
-        : {
-            "Content-Type": "application/json",
-            "X-StockRescue-Client": "local",
-          },
-    body: data === undefined ? undefined : JSON.stringify(data),
-  });
+  const response = await fetch(
+    (location.pathname.startsWith("/demo/") ? "/demo" : "") + path,
+    {
+      method: data === undefined ? "GET" : "POST",
+      headers:
+        data === undefined
+          ? {}
+          : {
+              "Content-Type": "application/json",
+              "X-StockRescue-Client": "local",
+            },
+      body: data === undefined ? undefined : JSON.stringify(data),
+    },
+  );
   let result;
   try {
     result = await response.json();
@@ -138,9 +144,7 @@ function currentProposal(id = selected) {
 }
 function receiptIntent(id) {
   try {
-    return JSON.parse(
-      sessionStorage.getItem("stockrescue-receipt-" + id) || "null",
-    );
+    return JSON.parse(sessionStorage.getItem(receiptPrefix + id) || "null");
   } catch {
     return null;
   }
@@ -149,7 +153,7 @@ function clearConfirmedReceipts() {
   for (const r of state.receipts) {
     const intent = receiptIntent(r.incomingId);
     if (intent?.key === r.key)
-      sessionStorage.removeItem("stockrescue-receipt-" + r.incomingId);
+      sessionStorage.removeItem(receiptPrefix + r.incomingId);
   }
 }
 const unit = (n, plural) =>
@@ -526,7 +530,7 @@ document.addEventListener("submit", (e) => {
     quantity: Number(new FormData(f).get("quantity")),
   };
   try {
-    sessionStorage.setItem("stockrescue-receipt-" + id, JSON.stringify(intent));
+    sessionStorage.setItem(receiptPrefix + id, JSON.stringify(intent));
   } catch {
     notify(
       "Habilita el almacenamiento de esta pestaña para registrar recepciones sin duplicarlas.",

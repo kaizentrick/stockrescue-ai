@@ -12,6 +12,7 @@ import { Operations, movementSchema, reminderSchema } from "./operations.ts";
 import type { StockRescueAgent } from "./agent/handler.ts";
 import type { Server } from "node:http";
 import { Store } from "./store.ts";
+import { DemoSessions, historicalEvidence } from "./public-demo.ts";
 async function body(
   req: IncomingMessage,
   limit = 220000,
@@ -35,11 +36,28 @@ export function createApp(
     operations?: Operations;
     agent?: StockRescueAgent;
     webhook?: Server;
+    publicDemo?: boolean;
+    practice?: boolean;
   } = {},
 ) {
-  if (allowedOrigin && !options.access)
+  if (
+    (options.practice || (options.publicDemo && !options.access)) &&
+    service.provider.mode !== "LOCAL_SIMULATION"
+  )
+    throw new Error("La demo abierta solo admite el proveedor simulado.");
+  if (
+    allowedOrigin &&
+    !options.access &&
+    !options.publicDemo &&
+    !options.practice
+  )
     throw new Error("Configura autenticación antes de publicar el panel.");
   const ops = options.operations;
+  const sessions = !options.practice
+    ? new DemoSessions((demo, operations, agent) =>
+        createApp(demo, allowedOrigin, { operations, agent, practice: true }),
+      )
+    : undefined;
   const demoService = new Service(new Store());
   const demoOps = new Operations(demoService);
   const app = createServer(async (req, res) => {
@@ -71,6 +89,44 @@ export function createApp(
         options.webhook.emit("request", req, res);
         return;
       }
+      if (path === "/api/evidence" && req.method === "GET") {
+        send(
+          ops && !options.practice
+            ? {
+                source: "live",
+                checkedAt: new Date().toISOString(),
+                integrations: ops.view().integrations.map((i) => ({
+                  provider: i.provider,
+                  status: i.status,
+                  at: i.at,
+                })),
+                operations: service
+                  .view()
+                  .proposals.filter((p) => p.operation)
+                  .map((p) => ({
+                    status: p.operation!.status,
+                    checkoutId: p.operation!.checkoutId,
+                    total: p.operation!.finalAmount ?? p.operation!.quote.total,
+                    currency: "MXN",
+                  })),
+              }
+            : historicalEvidence,
+        );
+        return;
+      }
+      if (sessions && (path === "/demo" || path.startsWith("/demo/"))) {
+        sessions.handle(req, res, origin!);
+        return;
+      }
+      if (
+        options.publicDemo &&
+        path === "/" &&
+        !options.access?.authenticated(req)
+      ) {
+        res.writeHead(302, { Location: "/demo/" });
+        res.end();
+        return;
+      }
       if (path === "/health" && req.method === "GET") {
         send({ status: "ready" });
         return;
@@ -88,16 +144,9 @@ export function createApp(
       }
       if (
         req.method === "GET" &&
-        ["/login", "/login.js", "/style.css", "/demo", "/demo.js"].includes(
-          path,
-        )
+        ["/login", "/login.js", "/style.css", "/demo.js"].includes(path)
       ) {
-        const file =
-          path === "/login"
-            ? "login.html"
-            : path === "/demo"
-              ? "demo.html"
-              : path.slice(1);
+        const file = path === "/login" ? "login.html" : path.slice(1);
         res.writeHead(200, {
           "Content-Type": file.endsWith(".html")
             ? "text/html; charset=utf-8"
@@ -128,7 +177,10 @@ export function createApp(
         send({ ok: true });
         return;
       }
-      if (options.access && !options.access.authenticated(req)) {
+      if (
+        (options.access && !options.access.authenticated(req)) ||
+        (options.publicDemo && !options.access)
+      ) {
         if (path.startsWith("/api/")) send({ error: "Inicia sesión." }, 401);
         else {
           res.writeHead(302, { Location: "/login" });
@@ -147,6 +199,7 @@ export function createApp(
           agent: {
             model: process.env.GEMINI_MODEL ?? "gemini-3.8-flash",
             allowCheckout: options.agent?.allowCheckout ?? false,
+            practice: options.practice ?? false,
           },
           deliveries: options.agent?.store.db
             .prepare(
@@ -208,6 +261,49 @@ export function createApp(
         );
         if (ops) {
           const owner = "owner";
+          if (options.practice && path === "/api/demo-document") {
+            send(
+              ops.document(
+                Buffer.from(
+                  "StockRescue fixture DEMO-JUECES-001; no es una extracción de IA",
+                ),
+                "application/pdf",
+                {
+                  kind: "RECEIPT",
+                  supplier: "Laboratorio StockRescue · ejemplo",
+                  date: "2026-10-09",
+                  folio: "DEMO-JUECES-001",
+                  currency: "MXN",
+                  total: 300,
+                  questions: [],
+                  lines: [
+                    {
+                      description: "Café · ejemplo de recepción",
+                      productId: "CAFE-250",
+                      quantity: 1,
+                      unit: "bolsas",
+                      unitsPerPackage: 1,
+                      amount: 300,
+                    },
+                  ],
+                },
+                "demo",
+              ),
+            );
+            return;
+          }
+          if (options.practice && path === "/api/documents/upload")
+            throw new Error(
+              "La práctica usa un documento precargado. La extracción de archivos con Gemini se demuestra en el entorno conectado.",
+            );
+          if (
+            options.practice &&
+            path === "/api/reminders/preview" &&
+            b.channel !== "web"
+          )
+            throw new Error(
+              "En la práctica los avisos se muestran únicamente en esta web.",
+            );
           if (path === "/api/chat" && options.agent) {
             send({
               answer: await options.agent.reply(
@@ -375,7 +471,24 @@ export function createApp(
       if (req.method === "GET" && files[path]) {
         const [file, type] = files[path];
         res.writeHead(200, { "Content-Type": type + "; charset=utf-8" });
-        res.end(readFileSync(new URL("../public/" + file, import.meta.url)));
+        let content = readFileSync(
+          new URL("../public/" + file, import.meta.url),
+          "utf8",
+        );
+        if (options.practice && file === "index.html") {
+          content = content
+            .replaceAll('href="/', 'href="/demo/')
+            .replaceAll('src="/', 'src="/demo/');
+          content = content.replace(
+            "</head>",
+            '<script src="/demo/demo.js" defer></script></head>',
+          );
+          content = content.replace(
+            '<main id="app" aria-busy="true">',
+            `<main id="app" aria-busy="true"><section class="notice" aria-label="Demo para jueces"><h2>Prueba StockRescue sin contraseña</h2><p>Tu sesión es independiente. Puedes cotizar, aprobar, recibir y registrar movimientos con datos ficticios. Las compras de esta práctica son simuladas.</p><div class="actions"><button id="demo-reset">Reiniciar mi demo</button><a href="/login">Abrir operación conectada</a><a href="https://github.com/kaizentrick/stockrescue-ai/blob/cx/stockrescue-mvp/docs/DEMO-SCRIPT.md" target="_blank" rel="noreferrer">Guion y evidencia</a></div><details><summary>Evidencia del entorno conectado</summary><div id="demo-evidence">Consultando…</div></details></section>`,
+          );
+        }
+        res.end(content);
         return;
       }
       send({ error: "Ruta no encontrada." }, 404);
@@ -383,7 +496,10 @@ export function createApp(
       send({ error: service.safe(e) }, 400);
     }
   });
-  app.on("close", () => demoService.store.close());
+  app.on("close", () => {
+    demoService.store.close();
+    sessions?.close();
+  });
   return app;
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

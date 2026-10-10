@@ -4,7 +4,15 @@
 
 El MVP reutiliza persistencia, aprobaciones e idempotencia del prototipo Reap Workplace Agent. Su caso principal es reponer **Café Guerrero Atoyac de Blend Station, bolsa de 250 g en grano**, incluido en la lista de comercios del evento. Vasos y filtros permiten explorar el mismo cálculo, pero no tienen proveedor habilitado para comprar.
 
-**Estado verificado el 9 de octubre de 2026:** plataforma protegida y demostración pública, Google AI Studio con `gemini-3.8-flash`, conversación y documentos reales por WhatsApp Cloud API. Los datos operativos siguen siendo los ejemplos del sandbox. El checkout Reap existente continúa **PROCESSING** por $360 MXN: se conserva el mismo intento y su reserva, sin otra compra. Ver [QA](docs/QA.md) y [Reap](docs/REAP-INTEGRATION.md).
+**Estado del MVP:** demo completa abierta para jueces y operación conectada con acceso de propietario; Google AI Studio con `gemini-3.8-flash`, conversación y documentos reales por WhatsApp Cloud API. Los datos operativos siguen siendo los ejemplos del sandbox. El checkout Reap existente continúa **PROCESSING** por $360 MXN: se conserva el mismo intento y su reserva, sin otra compra. Ver [QA](docs/QA.md) y [Reap](docs/REAP-INTEGRATION.md).
+
+## Para jueces y el equipo Kaizen
+
+[Entrar a StockRescue sin contraseña](https://tours-representation-concerts-pipe.trycloudflare.com/demo/) · [Guion del video y material de candidatura](docs/DEMO-SCRIPT.md) · [Prompt para reconstruir en la Mac de casa](docs/MAC-DE-CASA.md) · [PR del MVP](https://github.com/kaizentrick/stockrescue-ai/pull/2).
+
+La raíz del túnel abre la demo. Cada visitante puede recorrer cotización, aprobación, compra simulada, recepción, movimientos, documento de ejemplo, simulaciones y avisos web en su propia sesión. No necesita cuenta. La evidencia del entorno conectado aparece por separado con sus fechas; en otra Mac se identifica como histórica. El chat de práctica usa comandos; la extracción con Gemini y WhatsApp se muestran desde la operación conectada.
+
+Para reconstruir desde Git sin credenciales, usar la rama **`cx/stockrescue-mvp`**, Node 24+ (CI: 26), `npm ci`, `npm run check`, `npm run build` y `npm run demo:public`. Requiere `cloudflared` en PATH; escucha en 4322 y muestra la URL nueva. `npm run demo` abre solo en localhost. El [prompt completo](docs/MAC-DE-CASA.md) incluye validación, túnel y límites. No iniciar un segundo worker conectado mientras el Mac original sigue activo.
 
 ## Ejecutar el MVP conectado
 
@@ -25,9 +33,9 @@ npm run service -- restart
 
 El LaunchAgent `com.kaizentrick.stockrescue` arranca al iniciar sesión, recupera procesos y ejecuta una sola instancia del worker. 1Password debe estar desbloqueado y autorizar su CLI al iniciar. Para diagnóstico en primer plano: detener primero el servicio y ejecutar `npm run mvp:public`; `npm run mvp` sirve solamente en localhost:4321. No ejecutar los lanzadores antiguos del agente junto con el MVP.
 
-URL verificada al entregar: [MVP protegido](https://tours-representation-concerts-pipe.trycloudflare.com) y [demostración pública](https://tours-representation-concerts-pipe.trycloudflare.com/demo).
+URL verificada al entregar: [entrada pública](https://tours-representation-concerts-pipe.trycloudflare.com) y [operación conectada](https://tours-representation-concerts-pipe.trycloudflare.com/login).
 
-La dirección HTTPS vigente se consulta con `npm run service -- status`; `/` requiere la contraseña del elemento **StockRescue Owner** en 1Password. `/demo` ofrece datos simulados aislados. El **Quick Tunnel dura mientras corre cloudflared** y cambia de URL al reiniciar el supervisor; el lanzador actualiza el callback de Meta automáticamente. No se encontró una cuenta y dominio de Cloudflare configurados para un túnel estable. Mac despierto, conexión y sesión iniciada son necesarios.
+La dirección HTTPS vigente se consulta con `npm run service -- status`; sin sesión, `/` abre `/demo/`. Para operar el inventario conectado, entrar por `/login` con la contraseña del elemento **StockRescue Owner** en 1Password. `/demo/` ofrece el recorrido completo con datos simulados aislados por visitante. El **Quick Tunnel dura mientras corre cloudflared** y cambia de URL al reiniciar el supervisor; el lanzador actualiza el callback de Meta automáticamente. No se encontró una cuenta y dominio de Cloudflare configurados para un túnel estable. Mac despierto, conexión y sesión iniciada son necesarios.
 
 Elementos de bóveda: `StockRescue Reap sandbox`, `GOOGLE_AI_STUDIO_API_KEY`, `StockRescue Owner`, `StockRescue WhatsApp`, todos en su campo `credential`. El último contiene la configuración de Meta en JSON. `.data/service.json` contiene únicamente `{"metaConfigured":true}`, sin secretos. Datos: `.data/stockrescue-sandbox.sqlite`; cola: `.data/stockrescue-agent.sqlite`; no borrar ninguno para recuperar una operación. `.data` es privada y está excluida de Git.
 
@@ -83,7 +91,8 @@ No se incorporó un ERP completo ni una biblioteca de agentes. La interfaz usa H
 - [Integración Reap y sandbox](docs/REAP-INTEGRATION.md)
 - [Producto de la lista de comercios](docs/MERCHANTS.md)
 - [Recorrido y dirección visual](docs/DESIGN.md)
-- [Guion de demostración](docs/DEMO-SCRIPT.md)
+- [Guion de video, validación para jueces y candidatura](docs/DEMO-SCRIPT.md)
+- [Reconstrucción y prompt para otra Mac](docs/MAC-DE-CASA.md)
 - [Validación](docs/QA.md), [trabajo pendiente](docs/TASKS.md) y [contribuciones](CONTRIBUTING.md)
 
 ## Antecedentes preservados

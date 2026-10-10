@@ -29,13 +29,21 @@ npx playwright install chromium webkit
 npm run test:ui
 ```
 
-- `check`: ESLint, TypeScript estricto y **65 pruebas Node**.
+- `check`: ESLint, TypeScript estricto y **66 pruebas Node**.
 - `build`: comprobación TypeScript; el runtime ejecuta TypeScript nativo de Node, sin bundle de producción.
-- **14 pruebas de navegador**, siete en Chromium 156 y siete en WebKit 27.2.
+- **16 pruebas de navegador**, ocho en Chromium 156 y ocho en WebKit 27.2.
 - `npm audit --omit=dev --audit-level=high`: cero vulnerabilidades reportadas en dependencias de ejecución.
 - `git diff --check`: sin errores. Búsqueda de patrones de claves y enlaces alojados privados en archivos versionables: sin coincidencias.
 
 El servidor de UI existe solo en `tests/ui/server.ts`, puerto 4325 y SQLite en memoria. Restablece el estado antes de cada caso; jamás construye un proveedor sandbox. Resultados, trazas y capturas de fallo van a `.tmp/codex/`, fuera de Git. El endpoint de reset no existe en el servidor de producto.
+
+## Acceso de jueces y reconstrucción
+
+La ampliación pública añade una prueba HTTP de aislamiento entre dos visitantes, preservación del inventario del propietario, proyección de evidencia sin contactos ni detalles privados, bloqueo de carga de documentos reales/envío WhatsApp, protección de origen y reinicio individual. La prueba móvil en Chromium y WebKit recorre compra simulada, recepción, documento editable y reinicio sin login. Una primera ejecución encontró una espera insuficiente en el test después de recargar; se corrigió esperando el evento load.
+
+Se comprobó el túnel conectado desde Chromium sin sesión: raíz → /demo/, tres productos, evidencia leída de Google CONNECTED, WhatsApp DELIVERED y el mismo checkout Reap PROCESSING por $360. Sin errores JavaScript. Tras recuperar únicamente el worker, se conservaron la URL del túnel, dos movimientos y dos bolsas de café.
+
+El lanzador separado `npm run demo:public` utiliza proveedor simulado y memoria, sin cargar credenciales ni clientes externos. Los detalles del arranque y cómo reconstruir el mismo código están en [MAC-DE-CASA](MAC-DE-CASA.md). Git no contiene las bases de la operación conectada.
 
 ## Base de integración anterior · evidencia histórica
 

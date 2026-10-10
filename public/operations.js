@@ -34,14 +34,17 @@
   const date = (v) =>
     new Date(v).toLocaleString("es-MX", { timeZone: "America/Mexico_City" });
   async function api(path, data) {
-    const r = await fetch(path, {
-      method: data === undefined ? "GET" : "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-stockrescue-client": "local",
+    const r = await fetch(
+      (location.pathname.startsWith("/demo/") ? "/demo" : "") + path,
+      {
+        method: data === undefined ? "GET" : "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-stockrescue-client": "local",
+        },
+        body: data === undefined ? undefined : JSON.stringify(data),
       },
-      body: data === undefined ? undefined : JSON.stringify(data),
-    });
+    );
     if (r.status === 401) {
       location.href = "/login";
       throw new Error("Inicia sesión.");
@@ -116,7 +119,7 @@
             `<article><h3>${esc(i.provider)}</h3><strong>${esc(i.status)}</strong><p>${esc(i.detail)}</p><small>${esc(date(i.at))}</small></article>`,
         )
         .join("") +
-      `<article><h3>Agente</h3><p>Google AI Studio · ${esc(ops.agent.model)}</p><p>Compra sandbox: ${ops.agent.allowCheckout ? "requiere cotización y código" : "envío deshabilitado"}</p></article>`;
+      `<article><h3>Agente</h3><p>${ops.agent.practice ? "Práctica guiada por comandos · sin IA externa" : "Google AI Studio · " + esc(ops.agent.model)}</p><p>${ops.agent.practice ? "Compra simulada" : "Compra sandbox"}: ${ops.agent.allowCheckout ? "requiere cotización y código" : "envío deshabilitado"}</p></article>`;
     $("#reminder-list").innerHTML = ops.reminders
       .map(
         (r) =>

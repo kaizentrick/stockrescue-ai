@@ -81,3 +81,11 @@ El worker reclama un lease renovable en SQLite. Mensajes entrantes se deduplican
 Un tick procesa recordatorios y avisos; los resúmenes se calculan al vencer, no al programarlos. Se preservan cancelación y periodicidad diaria/semanal CDMX al reiniciar. Cada ocurrencia tiene huella única. Se consulta el mismo checkout abierto cada minuto; no se crea otro. `launchd` recupera el supervisor, que reinicia el servidor y renueva el callback cuando cambia el Quick Tunnel.
 
 El pronóstico usa ventas/consumo confirmados y días completos anteriores (hasta 28). Antes de siete días utiliza un supuesto explícito editable. Las series sintéticas se guardan aparte con semilla y configuración. El backtest compara promedio móvil de los 14 días anteriores con el supuesto fijo, usando MAE; no representa precisión validada en un negocio real.
+
+## Acceso abierto del hackathon
+
+La raíz redirige a `/demo/` cuando no hay sesión de propietario. `DemoSessions` crea un `Service`, `Operations`, cola y proveedor LOCAL_SIMULATION en memoria por cookie HttpOnly/SameSite/Secure en HTTPS. El prefijo `/demo/api/` reutiliza rutas y reglas de negocio; no accede a las bases conectadas. Tiene límite de sesiones y solicitudes, caducidad y reinicio individual. Solo utiliza avisos web y documento estructurado de ejemplo; los comandos declaran que no utilizan Gemini.
+
+`/api/evidence` publica exclusivamente proveedor, estado, fecha, checkout, total y moneda. No incluye contactos, documentos, mensajes, destinos ni enlaces alojados de autorización. En la operación conectada lee su estado guardado; `src/demo.ts` entrega evidencia histórica identificada como tal. El panel de operación y los webhooks mantienen sus controles anteriores.
+
+`npm run demo:public` levanta en 4322 un túnel separado con cloudflared desde PATH. No consulta 1Password ni configura Meta, y puede coexistir con el MVP conectado. Las sesiones de práctica son efímeras; la persistencia y el scheduler durables corresponden al proceso conectado de 4321.

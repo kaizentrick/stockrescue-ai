@@ -318,13 +318,11 @@ test("mobile operational panels share movements, document review and simulations
   );
   expect((await snapshot(request)).products[0].onHand).toBe(1);
   await page.getByRole("button", { name: "Documentos", exact: true }).click();
-  await page
-    .locator("#document-upload input")
-    .setInputFiles({
-      name: "receipt.pdf",
-      mimeType: "application/pdf",
-      buffer: Buffer.from("%PDF-1.4\nSynthetic test fixture"),
-    });
+  await page.locator("#document-upload input").setInputFiles({
+    name: "receipt.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\nSynthetic test fixture"),
+  });
   await page
     .getByRole("button", { name: "Leer con Gemini", exact: true })
     .click();
@@ -352,4 +350,50 @@ test("mobile operational panels share movements, document review and simulations
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   ).toBe(true);
+});
+
+test("judges enter without login, complete practice and review a sample document on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/demo/");
+  await expect(
+    page.getByRole("heading", { name: "Prueba StockRescue sin contraseña" }),
+  ).toBeVisible();
+  await expect(page.locator("#inventory-rows tr")).toHaveCount(3);
+  await page
+    .getByRole("button", {
+      name: "Revisar Café Guerrero Atoyac · 250 g en grano",
+    })
+    .click();
+  await purchase(page);
+  await page.getByRole("button", { name: "Ir a pedidos y recepción" }).click();
+  await page.getByRole("button", { name: "Registrar recepción" }).click();
+  await expect(page.locator("#order-list")).toContainText("recepción completa");
+  await page.getByRole("button", { name: "Documentos", exact: true }).click();
+  await expect(page.locator("#document-upload")).toBeHidden();
+  await page
+    .getByRole("button", { name: "Cargar recepción de ejemplo" })
+    .click();
+  await expect(page.locator("#document-list")).toContainText("DEMO-JUECES-001");
+  await page.getByRole("button", { name: "Revisar confirmación" }).click();
+  await page.locator("#action-confirm").click();
+  await expect(page.locator("#document-list")).toContainText(
+    "Documento confirmado",
+  );
+  await Promise.all([
+    page.waitForEvent("load"),
+    page.getByRole("button", { name: "Reiniciar mi demo" }).click(),
+  ]);
+  await expect(page.locator("#inventory-rows tr")).toHaveCount(3);
+  const state = await page.evaluate(async () =>
+    fetch("/demo/api/bootstrap").then((r) => r.json()),
+  );
+  expect(state.products[0].onHand).toBe(2);
+  expect(state.proposals).toHaveLength(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
 });

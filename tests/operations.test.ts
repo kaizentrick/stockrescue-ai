@@ -508,3 +508,98 @@ test("Gemini selects one simulation from related read calls and rejects multiple
   const risky = await make(["movement", "simulate"]).plan("Vende y simula", {});
   assert.ok("text" in risky);
 });
+
+test("open judge sessions isolate changes, preserve owner state and expose only selected evidence", async () => {
+  const { store, service, ops } = setup();
+  service.settings({
+    ...service.view().settings,
+    email: "private@example.com",
+  });
+  ops.health(
+    "Google",
+    "CONNECTED",
+    "private detail that must not be published",
+  );
+  const app = createApp(service, undefined, {
+    access: new Access(store.db, "owner-password-at-least-24-characters"),
+    operations: ops,
+    publicDemo: true,
+  });
+  app.listen(0, "127.0.0.1");
+  await once(app, "listening");
+  const base = "http://127.0.0.1:" + (app.address() as { port: number }).port;
+  const session = async () => {
+    const response = await fetch(base + "/demo/");
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /Prueba StockRescue sin contraseña/);
+    return response.headers.get("set-cookie")!.split(";")[0];
+  };
+  const request = (cookie: string, path: string, data?: unknown) =>
+    fetch(base + path, {
+      method: data === undefined ? "GET" : "POST",
+      headers: {
+        cookie,
+        origin: base,
+        "content-type": "application/json",
+        "x-stockrescue-client": "local",
+      },
+      body: data === undefined ? undefined : JSON.stringify(data),
+    });
+  try {
+    const root = await fetch(base, { redirect: "manual" });
+    assert.equal(root.headers.get("location"), "/demo/");
+    assert.equal((await fetch(base + "/api/bootstrap")).status, 401);
+    const evidence = JSON.stringify(
+      await fetch(base + "/api/evidence").then((r) => r.json()),
+    );
+    assert.match(evidence, /CONNECTED/);
+    assert.doesNotMatch(evidence, /private|address|phone|nextAction/);
+    const a = await session(),
+      b = await session();
+    const edit = await request(a, "/demo/api/products/CAFE-250", { onHand: 7 });
+    assert.equal(edit.status, 200);
+    assert.equal(
+      (await request(a, "/demo/api/bootstrap").then((r) => r.json()))
+        .products[0].onHand,
+      7,
+    );
+    assert.equal(
+      (await request(b, "/demo/api/bootstrap").then((r) => r.json()))
+        .products[0].onHand,
+      2,
+    );
+    assert.equal(service.view().products[0].onHand, 2);
+    const document = await request(a, "/demo/api/demo-document", {}).then((r) =>
+      r.json(),
+    );
+    const repeated = await request(a, "/demo/api/demo-document", {}).then((r) =>
+      r.json(),
+    );
+    assert.equal(document.id, repeated.id);
+    assert.equal(
+      (await request(a, "/demo/api/documents/upload", {})).status,
+      400,
+    );
+    assert.equal(
+      (await request(a, "/demo/api/reminders/preview", { channel: "whatsapp" }))
+        .status,
+      400,
+    );
+    assert.equal(
+      (
+        await fetch(base + "/demo/reset", {
+          method: "POST",
+          headers: { cookie: a },
+        })
+      ).status,
+      403,
+    );
+    assert.equal((await request(a, "/demo/reset", {})).status, 200);
+    assert.equal((await request(a, "/demo/api/bootstrap")).status, 409);
+    assert.equal(service.view().products[0].onHand, 2);
+  } finally {
+    app.close();
+    await once(app, "close");
+    store.close();
+  }
+});
