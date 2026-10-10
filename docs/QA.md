@@ -43,6 +43,8 @@ La ampliación pública añade una prueba HTTP de aislamiento entre dos visitant
 
 Se comprobó el túnel conectado desde Chromium sin sesión: raíz → /demo/, tres productos, evidencia leída de Google CONNECTED, WhatsApp DELIVERED y el mismo checkout Reap PROCESSING por $360. Sin errores JavaScript. Tras recuperar únicamente el worker, se conservaron la URL del túnel, dos movimientos y dos bolsas de café.
 
+También se inició `npm run demo:public` con su propio Quick Tunnel: entrada sin login y evidencia histórica; ese túnel adicional se usa solo para validar el lanzador y se detiene al terminar, conservando el túnel del MVP.
+
 El lanzador separado `npm run demo:public` utiliza proveedor simulado y memoria, sin cargar credenciales ni clientes externos. Los detalles del arranque y cómo reconstruir el mismo código están en [MAC-DE-CASA](MAC-DE-CASA.md). Git no contiene las bases de la operación conectada.
 
 ## Base de integración anterior · evidencia histórica

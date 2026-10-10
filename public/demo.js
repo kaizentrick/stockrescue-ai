@@ -51,6 +51,8 @@
     .then((evidence) => {
       const box = $("#demo-evidence");
       box.textContent = "";
+      if (evidence.source !== "live")
+        document.querySelector('a[href="/login"]')?.remove();
       const heading = document.createElement("p");
       heading.textContent =
         evidence.source === "live"
