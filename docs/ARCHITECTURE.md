@@ -2,10 +2,10 @@
 
 Node 24+ ejecuta TypeScript con borrado nativo de tipos. HTTP y SQLite son módulos nativos, sin dependencias de ejecución. Frontend JavaScript y CSS propios, sin librería visual ni recursos de terceros. Lint y TypeScript se usan en desarrollo.
 
-- `domain.ts`: inventario sintético y reglas. La salida HDMI permite conexión directa. Para USB-C se exige DP Alt Mode, capacidad de origen/destino y accesorio 4K/60 Hz. Un adaptador asignado a otro puesto no se considera libre.
-- `service.ts`: expediente, diagnóstico, selección mínima, aprobación SHA-256 del objeto quote, cancelación, presupuesto, checkout y reconciliación.
+- `domain.ts`: inventario sintético y reglas. La salida HDMI permite conexión directa cuando toda la cadena cumple el objetivo. Para USB-C se exige DP Alt Mode, capacidad de origen/destino y accesorio 4K/60 Hz. El cable requiere conectores, protocolo y capacidad estructurados; su nombre no acredita compatibilidad. Un adaptador asignado a otro puesto no se considera libre.
+- `service.ts`: expediente, diagnóstico, selección mínima, aprobación SHA-256 del objeto quote, cancelación, presupuesto, checkout y reconciliación. La cotización incorpora una huella del hardware, diagnóstico y versión de reglas; cambiar esa evidencia invalida la autorización además de cualquier cambio comercial.
 - `store.ts`: SQLite WAL, `BEGIN IMMEDIATE`, expediente y auditoría dentro de la misma transacción. El claim de checkout crea operación y reserva antes de ceder control asíncrono. Una segunda llamada devuelve la misma operación. PENDING y COMPLETED consumen presupuesto; FAILED/EXPIRED liberan reserva. Un intento incierto no admite cancelación/reinicio.
-- `mock.ts`: catálogo local y pedidos durables con clave única. Timeout de demo simula que el proveedor aceptó pero la respuesta se perdió; consultar recupera el resultado persistido.
+- `mock.ts`: catálogo local y pedidos durables con clave única. Timeout de demo simula que el proveedor aceptó pero la respuesta se perdió; consultar recupera el resultado persistido. Si el proceso terminó entre reservar y enviar, la consulta recupera el envío con la misma operación, cotización y clave persistidas. Una respuesta tardía solo se aplica si esa operación sigue pendiente.
 - `reap.ts`: transporte sandbox opt-in separado; no conectado a rutas de demo y nunca importado en navegador. Ver REAP-INTEGRATION.md.
 - `server.ts`: solo 127.0.0.1, validación de Host/Origin y cabecera propia para mutaciones, límites de cuerpo, rutas explícitas, CSP sin scripts inline.
 

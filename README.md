@@ -56,6 +56,8 @@ P-03 admite una variante de reporte sin protocolo conocido que bloquea compra. S
 
 No se utiliza código, datos, diseños ni cuentas de producto de otros proyectos. Nombre comercial y demanda pagadora pendientes. La candidatura y el video los envía el usuario.
 
+[Respuesta a las revisiones por especialidad](docs/reviews/implementation-response.md): cambios realizados, evidencia y límites del prototipo.
+
 ## Documentación compartida
 
 [Índice completo del Space](docs/space/README.md): 8 páginas y anexo con 152 merchants, exportados íntegramente con fuentes, fechas y SHA-256. Los textos son una instantánea y conservan el estado aprobado/propuesto de su fecha. [Estado de implementación posterior](docs/SPACE-STATUS.md).
